@@ -1,0 +1,1 @@
+<img class="" Fviewbox="0 0 48 48" fill="none" src="{{ asset('img/silgan-dispensing.png') }}" alt="Logo de silgan dispensing">
