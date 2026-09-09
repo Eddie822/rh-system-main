@@ -13,20 +13,28 @@ class RequestDay extends Model
 
     protected $fillable = [
         'request_id',
-        'date',
-        'hours',
+        'day_name',   // Ej: "Monday"
+        'day_date',   // Ej: "2026-09-07"
+        'hours',      // Ej: 8.5 (decimal)
     ];
 
     protected function casts(): array
     {
         return [
-            'date' => 'date',
-            'hours' => 'decimal:2',
+            'day_date' => 'date',
+            'hours' => 'float',
         ];
+    }
+
+    public function getDayDateFormattedAttribute(): string
+    {
+        return $this->day_date
+            ? $this->day_date->format('d-m-Y')
+            : '';
     }
 
     public function request(): BelongsTo
     {
-        return $this->BelongsTo(Request::class);
+        return $this->belongsTo(Request::class);
     }
 }

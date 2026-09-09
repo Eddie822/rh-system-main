@@ -17,6 +17,7 @@ class Request extends Model
         'group',
         'reason',
         'status',
+        'week',
         'request_date',
         'employee_signature',
     ];

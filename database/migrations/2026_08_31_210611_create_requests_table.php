@@ -24,7 +24,8 @@ return new class extends Migration
             $table->string('reason');
             $table->string('status')
                 ->default('pending');
-            $table->date('request_date');
+            $table->string('week');
+            // $table->date('request_date');
             $table->string('employee_signature')
                 ->nullable();
             $table->timestamps();

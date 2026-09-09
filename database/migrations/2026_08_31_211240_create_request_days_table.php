@@ -17,8 +17,9 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('requests')
                 ->cascadeOnDelete();
-            $table->date('date');
-            $table->decimal('hours, 5 , 2');
+            $table->string('day_name')->nullable();   // Ej: "Lunes"
+            $table->date('day_date')->nullable();    // Fecha real del día
+            $table->decimal('hours', 5, 2);
             $table->timestamps();
         });
     }
