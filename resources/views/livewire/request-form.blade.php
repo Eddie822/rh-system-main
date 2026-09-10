@@ -1,6 +1,6 @@
-<div class="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md">
+<div class="p-4 bg-white rounded-lg shadow-md dark:bg-gray-900">
     @if (session()->has('success'))
-        <div class="bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 p-2 rounded mb-4">
+        <div class="p-2 mb-4 text-green-800 bg-green-100 rounded dark:bg-green-800 dark:text-green-100">
             {{ session('success') }}
         </div>
     @endif
@@ -14,7 +14,7 @@
             <x-input id="group" wire:model.defer="group" name="group"
                 class="w-full dark:bg-gray-800 dark:text-white dark:border-gray-600" required />
             @error('group')
-                <span class="text-red-500 text-sm">{{ $message }}</span>
+                <span class="text-sm text-red-500">{{ $message }}</span>
             @enderror
         </div>
 
@@ -23,7 +23,7 @@
             <x-label for="reason" value="Justificación" class="dark:text-white" />
 
             <select id="reason" wire:model="reason" wire:change="updateReason"
-                class="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                class="w-full px-3 py-2 border rounded-md dark:bg-gray-800 dark:text-white dark:border-gray-600"
                 required>
                 <option value="">Selecciona justificación</option>
                 <option value="Vacación">Vacación</option>
@@ -37,77 +37,55 @@
             @if ($reason === 'Otros')
                 <x-input id="reason_other" type="text" placeholder="Especifica la justificación"
                     wire:model="reason_other"
-                    class="w-full dark:bg-gray-800 dark:text-white dark:border-gray-600 mt-2" />
+                    class="w-full mt-2 dark:bg-gray-800 dark:text-white dark:border-gray-600" />
             @endif
 
             @if ($reason === 'No. nom a cubrir')
                 <x-input id="employee_number" type="text" placeholder="Número de nómina" wire:model="employee_number"
-                    class="w-full dark:bg-gray-800 dark:text-white dark:border-gray-600 mt-2" />
+                    class="w-full mt-2 dark:bg-gray-800 dark:text-white dark:border-gray-600" />
             @endif
         </div>
 
         <!-- Tabla responsive -->
-        <h3 class="font-semibold mb-2 dark:text-white">Días y horas</h3>
+        <h3 class="mb-2 font-semibold dark:text-white">Fecha y horas</h3>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full table-auto border-collapse mb-3">
+            <table class="min-w-full mb-3 border-collapse table-auto">
                 <thead>
                     <tr class="bg-gray-100 dark:bg-gray-700">
-                        <th class="p-2 text-left dark:text-gray-200">Día</th>
-                        <th class="p-2 text-left dark:text-gray-200">Horas (HH:mm)</th>
+                        <th class="p-2 text-left dark:text-gray-200">Fecha</th>
+                        <th class="p-2 text-left dark:text-gray-200">Horas (H.h)</th>
                         <th class="p-2"></th>
                     </tr>
                 </thead>
+
+
                 <tbody>
+                    @error('rows')
+                        <div class="p-2 mb-3 text-red-600 bg-red-100 rounded">
+                            {{ $message }}
+                        </div>
+                    @enderror
                     @foreach ($rows as $index => $row)
                         <tr class="border-t dark:border-gray-700">
                             <td class="p-2">
-                                <select wire:model="rows.{{ $index }}.day_name"
-                                    wire:change="updateDayDate({{ $index }})"
-                                    class="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <input type="date" wire:model="rows.{{ $index }}.day_date"
+                                    min="{{ now()->addDay()->format('Y-m-d') }}"
+                                    class="w-full px-2 py-1 border rounded dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" />
 
-                                    <option value="">Selecciona día</option>
-                                    <option value="Lunes">Lunes</option>
-                                    <option value="Martes">Martes</option>
-                                    <option value="Miércoles">Miércoles</option>
-                                    <option value="Jueves">Jueves</option>
-                                    <option value="Viernes">Viernes</option>
-                                    <option value="Sábado">Sábado</option>
-                                    <option value="Domingo">Domingo</option>
-                                </select>
-
-                                @error("rows.$index.day_name")
-                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @error("rows.$index.day_date")
+                                    <span class="text-sm text-red-500">
+                                        {{ $message }}
+                                    </span>
                                 @enderror
-
-                                <!-- Mostrar fecha inmediatamente -->
-                                @if (!empty($row['day_name']))
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        Fecha: {{ $this->getDateForDay($row['day_name']) }}
-                                    </p>
-                                @endif
                             </td>
                             <td class="p-2">
-                                <input type="number" x-data="{ val: '' }"
-                                    x-on:input="
-           // solo números
-           let v = $el.value.replace(/[^0-9]/g,'');
-           if(v.length >= 4){
-               let hh = parseInt(v.slice(0,2));
-               let mm = parseInt(v.slice(2,4));
-
-               // limitar a 12 horas máximo
-               if(hh > 12) hh = 12;
-               if(mm > 59) mm = 59;
-
-               $el.value = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
-           }
-       "
-                                    maxlength="5" placeholder="HH:mm" wire:model="rows.{{ $index }}.hours"
-                                    class="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" />
-
+                                <input 2 type="number" 3 step="0.5" 4 min="0" 5 max="12" 6
+                                    wire:model="rows.{{ $index }}.hours" 7 placeholder="Ej. 1.5" 8
+                                    class="w-full px-2 py-1 border rounded dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+                                    9 />
                                 @error("rows.$index.hours")
-                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                    <span class="text-sm text-red-500">{{ $message }}</span>
                                 @enderror
                             </td>
 
@@ -124,12 +102,12 @@
         </div>
 
         <!-- Botones -->
-        <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <div class="flex flex-col gap-2 mb-4 sm:flex-row">
             <button type="button" wire:click.prevent="addRow"
-                class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded w-full sm:w-auto">
+                class="w-full px-3 py-2 text-white bg-green-500 rounded hover:bg-green-600 sm:w-auto">
                 + Agregar día
             </button>
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">
+            <button type="submit" class="w-full px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600 sm:w-auto">
                 Enviar Solicitud
             </button>
         </div>

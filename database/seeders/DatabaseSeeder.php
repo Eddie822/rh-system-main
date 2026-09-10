@@ -83,7 +83,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'supervisor',
                 'area_id' => $production->id,
                 'group' => 'A',
-                'supervisor_id' => 0005,
+                'supervisor_id' => $plantManager->id,
             ]
         );
 

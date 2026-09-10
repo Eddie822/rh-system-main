@@ -2,16 +2,17 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\DB;
 use App\Models\Request as RequestModel;
 use App\Models\RequestDay;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class RequestForm extends Component
 {
     public $group;
     public $reason;
+    public $reason_other;
     public $employee_number;
 
     public $rows = [];
@@ -22,31 +23,48 @@ class RequestForm extends Component
             'group' => 'required|string|max:255',
             'reason' => 'required|string|max:255',
             'reason_other' => 'nullable|string|max:255',
+
             'employee_number' => $this->reason === 'No. nom a cubrir'
-                ? 'required|int|max:4'
-                : 'nullable|int|max:4',
+                ? 'required|digits:4'
+                : 'nullable|digits:4',
+
             'rows' => 'required|array|min:1',
-            'rows.*.day_name' => 'required|string|max:50',
-            'rows.*.hours' => ['required', 'regex:/^([01]\d|2[0-3]):([0-5]\d)$/'],
+            'rows.*.day_date' => 'required|date|after:today',
+            'rows.*.hours' => 'required|numeric|min:0|max:12',
         ];
     }
 
     protected $messages = [
         'rows.required' => 'Agrega al menos un día.',
-        'rows.*.hours.regex' => 'El formato de horas debe ser HH:mm.',
-        'rows.*.day_name.required' => 'Selecciona un día.',
+
+        'rows.*.day_date.required' => 'Selecciona una fecha.',
+        'rows.*.day_date.date' => 'La fecha seleccionada no es válida.',
+        'rows.*.day_date.after' => 'La fecha debe ser posterior a hoy.',
+
+        'rows.*.hours.required' => 'Captura las horas.',
+        'rows.*.hours.numeric' => 'Las horas deben ser numéricas.',
+        'rows.*.hours.min' => 'Las horas deben ser mayores o iguales a 0.',
+        'rows.*.hours.max' => 'No puedes capturar más de 12 horas.',
+
+        'employee_number.digits' => 'La nómina debe tener exactamente 4 dígitos.',
     ];
 
     public function mount()
     {
         $this->rows = [
-            ['day_name' => '', 'hours' => '', 'day_date' => null]
+            [
+                'day_date' => null,
+                'hours' => '',
+            ]
         ];
     }
 
     public function addRow()
     {
-        $this->rows[] = ['day_name' => '', 'hours' => ''];
+        $this->rows[] = [
+            'day_date' => null,
+            'hours' => '',
+        ];
     }
 
     public function removeRow($index)
@@ -56,121 +74,123 @@ class RequestForm extends Component
         }
     }
 
-    public $reason_other; // agrega esta propiedad
-
     public function submit()
     {
         $validated = $this->validate();
 
-        // Si la razón es "Otros", usar el campo adicional
+        // Validar fechas repetidas
+        $dates = collect($validated['rows'])->pluck('day_date');
+
+        if ($dates->duplicates()->isNotEmpty()) {
+
+            foreach ($validated['rows'] as $index => $row) {
+
+                if ($dates->duplicates()->contains($row['day_date'])) {
+
+                    $this->addError(
+                        "rows.$index.day_date",
+                        'Esta fecha ya fue seleccionada.'
+                    );
+                }
+            }
+
+            return;
+        }
+
+        // Validar misma semana
+        $weeks = collect($validated['rows'])
+            ->pluck('day_date')
+            ->map(fn($date) => Carbon::parse($date)->weekOfYear)
+            ->unique();
+
+        if ($weeks->count() > 1) {
+            $this->addError(
+                'rows',
+                'Todas las fechas deben pertenecer a la misma semana.'
+            );
+
+            return;
+        }
+
+        $week = $weeks->first();
+
         $finalReason = $validated['reason'];
 
         if ($finalReason === 'Otros') {
             $finalReason = $this->reason_other;
         }
 
-        if ($finalReason === 'No. nom a cubrir' && !empty($this->employee_number)) {
+        if (
+            $validated['reason'] === 'No. nom a cubrir'
+            && !empty($this->employee_number)
+        ) {
             $finalReason .= ' - Nómina: ' . $this->employee_number;
         }
 
-        DB::transaction(function () use ($validated, $finalReason) {
+        DB::transaction(function () use (
+            $validated,
+            $finalReason,
+            $week
+        ) {
+
             $requestModel = RequestModel::create([
                 'employee_id' => auth()->id(),
                 'area_id' => auth()->user()->area_id,
                 'group' => $validated['group'],
-                'reason' => $finalReason, // ✅ ahora sí guarda el texto personalizado
+                'reason' => $finalReason,
                 'status' => 'pending_supervisor',
-                'week' => now()->weekOfYear,
+                'week' => $week,
                 'employee_signature' => null,
             ]);
 
             foreach ($validated['rows'] as $row) {
-                $dayDate = $this->calculateDateForDay($row['day_name']);
+
+                $date = Carbon::parse($row['day_date']);
 
                 RequestDay::create([
                     'request_id' => $requestModel->id,
-                    'day_name'   => $row['day_name'],
-                    'day_date'   => $dayDate,
-                    'hours'      => $this->timeToDecimal($row['hours']),
+                    'day_name' => ucfirst($date->locale('es')->dayName),
+                    'day_date' => $row['day_date'],
+                    'hours' => $row['hours'],
                 ]);
             }
         });
 
-        session()->flash('success', 'Solicitud enviada correctamente.');
+        session()->flash(
+            'success',
+            'Solicitud enviada correctamente.'
+        );
+
         $this->resetForm();
-    }
-
-
-    private function timeToDecimal(string $hhmm): float
-    {
-        [$h, $m] = explode(':', $hhmm);
-        return (float) $h + ((float) $m / 60);
-    }
-
-    private function calculateDateForDay(string $dayName): ?string
-    {
-        $weekStart = Carbon::now()->startOfWeek(); // lunes actual
-        $daysMap = [
-            'Lunes' => 0,
-            'Martes' => 1,
-            'Miércoles' => 2,
-            'Jueves' => 3,
-            'Viernes' => 4,
-            'Sábado' => 5,
-            'Domingo' => 6,
-        ];
-
-        return isset($daysMap[$dayName])
-            ? $weekStart->copy()->addDays($daysMap[$dayName])->format('Y-m-d') // se guarda en DB
-            : null;
-    }
-
-    public function getDateForDay($dayName): ?string
-    {
-        $weekStart = \Carbon\Carbon::now()->startOfWeek(); // lunes actual
-        $daysMap = [
-            'Lunes' => 0,
-            'Martes' => 1,
-            'Miércoles' => 2,
-            'Jueves' => 3,
-            'Viernes' => 4,
-            'Sábado' => 5,
-            'Domingo' => 6,
-        ];
-
-        return isset($daysMap[$dayName])
-            ? $weekStart->copy()->addDays($daysMap[$dayName])->format('d-m-Y')
-            : null;
-    }
-
-    public function updateDayDate($index)
-    {
-        if (!empty($this->rows[$index]['day_name'])) {
-            $this->rows[$index]['day_date'] = $this->calculateDateForDay($this->rows[$index]['day_name']);
-        }
     }
 
     public function updateReason()
     {
-        // limpiar campos cuando cambias de opción
         if ($this->reason !== 'Otros') {
             $this->reason_other = '';
         }
+
         if ($this->reason !== 'No. nom a cubrir') {
             $this->employee_number = '';
         }
     }
-
-
 
     private function resetForm()
     {
         $this->group = '';
         $this->reason = '';
         $this->reason_other = '';
-        $this->rows = [['day_name' => '', 'hours' => '']];
-    }
+        $this->employee_number = '';
 
+        $this->rows = [
+            [
+                'day_date' => null,
+                'hours' => '',
+            ]
+        ];
+
+        $this->resetErrorBag();
+    }
 
     public function render()
     {

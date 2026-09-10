@@ -41,7 +41,7 @@ class Request extends Model
 
     public function days(): HasMany
     {
-        return $this->hasMany(Request::class);
+        return $this->hasMany(RequestDay::class);
     }
 
     public function authorizations(): HasMany

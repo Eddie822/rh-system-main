@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Users\RequestsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -14,4 +15,7 @@ Route::middleware([
     Route::get('/request', function () {
         return view('request');
     })->name('request');
+
+    Route::get('/requests', [RequestsController::class, 'index'])
+        ->name('requests.index');
 });
