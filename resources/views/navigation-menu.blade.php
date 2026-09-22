@@ -20,6 +20,12 @@
                     <x-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('myrequests')">
                         {{ __('Mis solicitudes') }}
                     </x-nav-link>
+
+                    @if (auth()->user()->canApprove())
+                        <x-nav-link href="{{ route('approvals.index') }}">
+                            {{ __('Aprobaciones') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -182,6 +188,12 @@
             <x-responsive-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('myrequests')">
                 {{ __('Mis solicitudes') }}
             </x-responsive-nav-link>
+
+            @if (auth()->user()->canApprove())
+                <x-responsive-nav-link href="{{ route('approvals.index') }}" >
+                    {{ __('Aprobaciones') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

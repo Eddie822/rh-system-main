@@ -9,6 +9,8 @@ use App\Models\RequestDay;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Faker\Factory as Faker;
+use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -65,7 +67,7 @@ class DatabaseSeeder extends Seeder
                 'last_name' => 'Mendez Gonzalez',
                 'password' => Hash::make('password'),
                 'must_change_password' => true,
-                'role' => 'hr',
+                'role' => 'hr_manager',
                 'area_id' => $hr->id,
                 'group' => null,
                 'supervisor_id' => null,
@@ -95,7 +97,7 @@ class DatabaseSeeder extends Seeder
                 'last_name' => 'Martinez Palacios',
                 'password' => Hash::make('password'),
                 'must_change_password' => true,
-                'role' => 'manager',
+                'role' => 'area_manager',
                 'area_id' => $finance->id,
                 'group' => null,
                 'supervisor_id' => null,
@@ -128,6 +130,36 @@ class DatabaseSeeder extends Seeder
         ]);
 
         /*
+|--------------------------------------------------------------------------
+| Trabajadores adicionales
+|--------------------------------------------------------------------------
+*/
+
+$faker = Faker::create('es_MX');
+
+$workers = collect([$worker]);
+
+for ($i = 6; $i <= 55; $i++) {
+
+    $workers->push(
+        User::updateOrCreate(
+            ['employee_number' => str_pad($i, 4, '0', STR_PAD_LEFT)],
+            [
+                'name' => $faker->firstName(),
+                'last_name' => $faker->lastName() . ' ' . $faker->lastName(),
+                'password' => Hash::make('password'),
+                'must_change_password' => false,
+                'role' => 'worker',
+                'area_id' => $production->id,
+                'group' => $faker->randomElement(['A', 'B', 'C', 'D']),
+                'supervisor_id' => $supervisor->id,
+            ]
+        )
+    );
+}
+
+
+        /*
         |--------------------------------------------------------------------------
         | Limpiar solicitudes anteriores
         |--------------------------------------------------------------------------
@@ -136,171 +168,132 @@ class DatabaseSeeder extends Seeder
         RequestDay::query()->delete();
         Request::query()->delete();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Solicitud 1 - Pendiente de Supervisor
-        |--------------------------------------------------------------------------
-        */
-        $request1 = Request::create([
-            'employee_id' => $worker->id,
-            'area_id' => $production->id,
-            'group' => 'A',
-            'reason' => 'Employee to cover',
-            'status' => 'pending_supervisor',
-            'week' => now()->weekOfYear,
-            'employee_signature' => null,
-        ]);
+       /*
+|--------------------------------------------------------------------------
+| Solicitudes de prueba
+|--------------------------------------------------------------------------
+*/
+
+$statuses = [
+    'pending_area_manager',
+    'pending_hr_manager',
+    'pending_plant_manager',
+    'approved',
+    'rejected',
+];
+
+$reasons = [
+    'Vacation',
+    'Sick leave',
+    'Employee to cover',
+    'Vacancy',
+    'Training',
+    'Production support',
+    'Other',
+];
+
+$createdRequests = [];
+
+foreach (range(1, 100) as $index) {
+
+    $employee = $workers->random();
+
+    $status = $faker->randomElement($statuses);
+
+    $baseDate = Carbon::instance(
+        $faker->dateTimeBetween('-60 days', '+30 days')
+    );
+
+    $request = Request::create([
+        'employee_id' => $employee->id,
+        'area_id' => $employee->area_id,
+        'group' => $employee->group,
+        'reason' => $faker->randomElement($reasons),
+        'status' => $status,
+        'week' => $baseDate->weekOfYear,
+        'created_at' => $faker->dateTimeBetween('-90 days', 'now'),
+        'updated_at' => now(),
+    ]);
+
+    $createdRequests[] = $request;
+
+    $daysCount = rand(1, 5);
+
+    for ($day = 0; $day < $daysCount; $day++) {
+
+        $date = $baseDate->copy()->addDays($day);
 
         RequestDay::create([
-            'request_id' => $request1->id,
-            'day_name' => 'Jueves',
-            'day_date' => now()->addDay()->toDateString(),
-            'hours' => 4.00,
+            'request_id' => $request->id,
+            'day_name' => ucfirst($date->locale('es')->dayName),
+            'day_date' => $date->toDateString(),
+            'hours' => $faker->randomFloat(2, 1, 12),
         ]);
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Solicitud 2 - Pendiente de Gerente del Área
-        |--------------------------------------------------------------------------
-        */
-        $request2 = Request::create([
-            'employee_id' => $worker->id,
-            'area_id' => $production->id,
-            'group' => 'A',
-            'reason' => 'Vacancy',
-            'status' => 'pending_area_manager',
-            'week' => now()->weekOfYear,
-            'employee_signature' => null,
-        ]);
+    /*
+    |--------------------------------------------------------------------------
+    | Flujo de autorizaciones
+    |--------------------------------------------------------------------------
+    */
 
-        RequestDay::create([
-            'request_id' => $request2->id,
-            'day_name' => 'Miércoles',
-            'day_date' => now()->toDateString(),
-            'hours' => 3.50,
-        ]);
+    if (
+        in_array($status, [
+            'pending_hr',
+            'pending_plant_manager',
+            'approved'
+        ])
+    ) {
 
         Authorization::create([
-            'request_id' => $request2->id,
-            'user_id' => $supervisor->id,
-            'authorization_role' => 'supervisor',
-            'action' => 'approved',
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Solicitud 3 - Pendiente de RH
-        |--------------------------------------------------------------------------
-        */
-        $request3 = Request::create([
-            'employee_id' => $worker->id,
-            'area_id' => $production->id,
-            'group' => 'A',
-            'reason' => 'Other',
-            'status' => 'pending_hr',
-            'week' => now()->weekOfYear,
-            'employee_signature' => null,
-        ]);
-
-        RequestDay::create([
-            'request_id' => $request3->id,
-            'day_name' => 'Martes',
-            'day_date' => now()->subDay()->toDateString(),
-            'hours' => 2.00,
-        ]);
-
-        Authorization::create([
-            'request_id' => $request3->id,
-            'user_id' => $supervisor->id,
-            'authorization_role' => 'supervisor',
-            'action' => 'approved',
-        ]);
-
-        Authorization::create([
-            'request_id' => $request3->id,
+            'request_id' => $request->id,
             'user_id' => $areaManager->id,
             'authorization_role' => 'area_manager',
             'action' => 'approved',
         ]);
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Solicitud 4 - Pendiente de Gerente de Planta
-        |--------------------------------------------------------------------------
-        */
-        $request4 = Request::create([
-            'employee_id' => $worker->id,
-            'area_id' => $production->id,
-            'group' => 'A',
-            'reason' => 'Vacation',
-            'status' => 'pending_plant_manager',
-            'week' => now()->weekOfYear,
-            'employee_signature' => null,
-        ]);
-
-        RequestDay::create([
-            'request_id' => $request4->id,
-            'day_name' => 'Miércoles',
-            'day_date' => now()->addDays(2)->toDateString(),
-            'hours' => 5.00,
-        ]);
+    if (
+        in_array($status, [
+            'pending_plant_manager',
+            'approved'
+        ])
+    ) {
 
         Authorization::create([
-            'request_id' => $request4->id,
-            'user_id' => $supervisor->id,
-            'authorization_role' => 'supervisor',
-            'action' => 'approved',
-        ]);
-
-        Authorization::create([
-            'request_id' => $request4->id,
-            'user_id' => $areaManager->id,
-            'authorization_role' => 'area_manager',
-            'action' => 'approved',
-        ]);
-
-        Authorization::create([
-            'request_id' => $request4->id,
+            'request_id' => $request->id,
             'user_id' => $hr->id,
-            'authorization_role' => 'hr',
+            'authorization_role' => 'hr_manager',
             'action' => 'approved',
         ]);
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Solicitud 5 - Completamente aprobada
-        |--------------------------------------------------------------------------
-        */
-        $request5 = Request::create([
-            'employee_id' => $worker->id,
-            'area_id' => $production->id,
-            'group' => 'A',
-            'reason' => 'Sick leave',
-            'status' => 'approved',
-            'week' => now()->weekOfYear,
-            'employee_signature' => null,
-        ]);
-
-        RequestDay::create([
-            'request_id' => $request5->id,
-            'day_name' => 'Jueves',
-            'day_date' => now()->addDays(4)->toDateString(),
-            'hours' => 4.00,
-        ]);
+    if ($status === 'approved') {
 
         Authorization::create([
-            'request_id' => $request5->id,
-            'user_id' => $supervisor->id,
-            'authorization_role' => 'supervisor',
+            'request_id' => $request->id,
+            'user_id' => $plantManager->id,
+            'authorization_role' => 'plant_manager',
             'action' => 'approved',
         ]);
+    }
+
+    if ($status === 'rejected') {
 
         Authorization::create([
-            'request_id' => $request5->id,
-            'user_id' => $areaManager->id,
+            'request_id' => $request->id,
+            'user_id' => $faker->randomElement([
+                $areaManager->id,
+                $hr->id,
+                $plantManager->id,
+            ]),
             'authorization_role' => 'area_manager',
-            'action' => 'approved',
+            'action' => 'rejected',
+            'reason' => 'Solicitud rechazada para pruebas',
         ]);
+    }
+}
+
         /*
         |--------------------------------------------------------------------------
         | Información en consola
@@ -309,31 +302,14 @@ class DatabaseSeeder extends Seeder
 
         $this->command->newLine();
 
-        $this->command->info('Usuarios de prueba creados:');
+        $this->command->info('Datos de prueba generados correctamente');
 
         $this->command->table(
-            ['Employee Number', 'Nombre', 'Rol', 'Password'],
+            ['Concepto', 'Cantidad'],
             [
-                ['EMP001', 'Empleado Prueba', 'worker', 'password'],
-                ['SUP001', 'Supervisor Prueba', 'supervisor', 'password'],
-                ['MGR001', 'Carlos Martinez', 'manager', 'password'],
-                ['HR001', 'Uriel', 'hr', 'password'],
-                ['MGR002', 'Ricardo', 'manager', 'password'],
-            ]
-        );
-
-        $this->command->newLine();
-
-        $this->command->info('Solicitudes de prueba creadas:');
-
-        $this->command->table(
-            ['ID', 'Estado', 'Descripción'],
-            [
-                [$request1->id, 'pending_supervisor', 'Pendiente de supervisor'],
-                [$request2->id, 'pending_area_manager', 'Pendiente de Carlos Martinez'],
-                [$request3->id, 'pending_hr', 'Pendiente de Uriel'],
-                [$request4->id, 'pending_plant_manager', 'Pendiente de Ricardo'],
-                [$request5->id, 'approved', 'Completamente aprobada'],
+                ['Trabajadores', User::where('role', 'worker')->count()],
+                ['Solicitudes', Request::count()],
+                ['Autorizaciones', Authorization::count()],
             ]
         );
     }

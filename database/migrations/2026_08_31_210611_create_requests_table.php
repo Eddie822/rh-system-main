@@ -23,11 +23,11 @@ return new class extends Migration
             $table->string('group');
             $table->string('reason');
             $table->string('status')
-                ->default('pending');
+                ->default('pending_area_manager');
             $table->string('week');
             // $table->date('request_date');
-            $table->string('employee_signature')
-                ->nullable();
+            // $table->string('rejection_reason')
+            //     ->nullable();
             $table->timestamps();
         });
     }

@@ -55,21 +55,21 @@
         <!-- Name -->
         <div class="col-span-6 sm:col-span-4 ">
             <x-label class="dark:text-gray-600" for="name" value="{{ __('Name') }}" />
-            <x-input id="name" type="text" class="block w-full mt-1" wire:model="state.name" required autocomplete="name" />
+            <x-input id="name" type="text" class="block w-full mt-1" wire:model="state.name" required autocomplete="name" readonly />
             <x-input-error for="name" class="mt-2" />
         </div>
 
         <!-- Last Name -->
         <div class="col-span-6 sm:col-span-4">
             <x-label class="dark:text-gray-600" for="last_name" value="{{ __('Apellidos') }}" />
-            <x-input id="last_name" type="text" class="block w-full mt-1" wire:model="state.last_name" required autocomplete="family-name" />
+            <x-input id="last_name" type="text" class="block w-full mt-1" wire:model="state.last_name" required autocomplete="family-name" readonly/>
             <x-input-error for="last_name" class="mt-2" />
         </div>
 
         <!-- Employee number -->
         <div class="col-span-6 sm:col-span-4">
             <x-label  class="dark:text-gray-600" for="employee_number" value="{{ __('Número de nómina') }}" />
-            <x-input id="employee_number" type="text" class="block w-full mt-1" wire:model="state.employee_number" required autocomplete="username" />
+            <x-input id="employee_number" type="text" class="block w-full mt-1" wire:model="state.employee_number" required autocomplete="username" readonly />
             <x-input-error for="employee_number" class="mt-2" />
 
             @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::emailVerification()) && ! $this->user->hasVerifiedEmail())
@@ -95,9 +95,9 @@
             {{ __('Saved.') }}
         </x-action-message>
 
-        <x-button wire:loading.attr="disabled" wire:target="photo">
+        {{-- <x-button wire:loading.attr="disabled" wire:target="photo">
             {{ __('Save') }}
-        </x-button>
+        </x-button> --}}
     </x-slot>
 </x-form-section>
 

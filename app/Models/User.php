@@ -75,6 +75,15 @@ class User extends Authenticatable
         ];
     }
 
+    public function canApprove(): bool
+    {
+        return in_array($this->role, [
+         'area_manager',
+         'hr_manager',
+         'plant_manager',
+        ]);
+    }
+
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);

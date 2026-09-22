@@ -19,7 +19,6 @@ class Request extends Model
         'status',
         'week',
         'request_date',
-        'employee_signature',
     ];
 
     protected function casts(): array

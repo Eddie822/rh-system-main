@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Livewire\Requests;
 
 use App\Models\Request as RequestModel;
 use App\Models\RequestDay;
@@ -138,7 +138,7 @@ class RequestForm extends Component
                 'area_id' => auth()->user()->area_id,
                 'group' => $validated['group'],
                 'reason' => $finalReason,
-                'status' => 'pending_supervisor',
+                'status' => 'pending_area_manager',
                 'week' => $week,
                 'employee_signature' => null,
             ]);
@@ -194,6 +194,6 @@ class RequestForm extends Component
 
     public function render()
     {
-        return view('livewire.request-form');
+        return view('livewire/requests.request-form');
     }
 }
