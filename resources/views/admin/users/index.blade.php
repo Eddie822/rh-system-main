@@ -1,3 +1,3 @@
 <x-admin-layout>
-    <livewire:approvals.approval-list />
+    <livewire:admin.user.user-list />
 </x-admin-layout>

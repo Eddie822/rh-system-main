@@ -55,7 +55,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'plant_manager',
                 'area_id' => $plant_manager->id,
                 'group' => null,
-                'supervisor_id' => null,
+                'area_manager_id' => null,
             ]
         );
 
@@ -70,7 +70,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'hr_manager',
                 'area_id' => $hr->id,
                 'group' => null,
-                'supervisor_id' => null,
+                'area_manager_id' => null,
             ]
         );
 
@@ -85,7 +85,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'supervisor',
                 'area_id' => $production->id,
                 'group' => 'A',
-                'supervisor_id' => $plantManager->id,
+                'area_manager_id' => $plantManager->id,
             ]
         );
 
@@ -100,7 +100,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'area_manager',
                 'area_id' => $finance->id,
                 'group' => null,
-                'supervisor_id' => null,
+                'area_manager_id' => null,
             ]
         );
 
@@ -116,17 +116,17 @@ class DatabaseSeeder extends Seeder
                 'role' => 'worker',
                 'area_id' => $production->id,
                 'group' => 'A',
-                'supervisor_id' => null,
+                'area_manager_id' => null,
             ]
         );
         /*
         |--------------------------------------------------------------------------
-        | Relación empleado → supervisor
+        | Relación empleado → GERENTE DE EMPLEADO
         |--------------------------------------------------------------------------
         */
 
         $worker->update([
-            'supervisor_id' => $supervisor->id,
+            'area_manager_id' => $areaManager->id,
         ]);
 
         /*
@@ -152,7 +152,7 @@ for ($i = 6; $i <= 55; $i++) {
                 'role' => 'worker',
                 'area_id' => $production->id,
                 'group' => $faker->randomElement(['A', 'B', 'C', 'D']),
-                'supervisor_id' => $supervisor->id,
+                'area_manager_id' => $areaManager->id,
             ]
         )
     );

@@ -141,6 +141,12 @@
                                 {{ __('Profile') }}
                             </x-dropdown-link>
 
+                            @if ((auth()->check() && auth()->user()->role === 'admin') || auth()->user()->role === 'rh')
+                                <x-dropdown-link href="{{ route('admin.dashboard') }}">
+                                    {{ __('Panel de administrador') }}
+                                </x-dropdown-link>
+                            @endif
+
                             @if (Laravel\Jetstream\Jetstream::hasApiFeatures())
                                 <x-dropdown-link href="{{ route('api-tokens.index') }}">
                                     {{ __('API Tokens') }}
@@ -181,6 +187,12 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
+
+            @if ((auth()->check() && auth()->user()->role === 'admin') || auth()->user()->role === 'rh')
+                <x-responsive-nav-link href="{{ route('admin.dashboard') }}">
+                    {{ __('Panel de administrador') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
                 {{ __('Solicitudes') }}
             </x-responsive-nav-link>
@@ -190,7 +202,7 @@
             </x-responsive-nav-link>
 
             @if (auth()->user()->canApprove())
-                <x-responsive-nav-link href="{{ route('approvals.index') }}" >
+                <x-responsive-nav-link href="{{ route('approvals.index') }}">
                     {{ __('Aprobaciones') }}
                 </x-responsive-nav-link>
             @endif

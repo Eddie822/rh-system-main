@@ -11,81 +11,14 @@
             'active' => request()->routeIs('admin.dashboard'),
         ],
         // --- GESTIÓN DE PRODUCTOS ---
-        [
-            //Familias de productos
-            'icon' => 'fa-solid fa-box-open',
-            'name' => 'Familias',
-            'route' => route('admin.families.index'),
-            'active' => request()->routeIs('admin.families.*'),
-        ],
-        [
-            //Categorías de productos
-            'icon' => 'fa-solid fa-tags',
-            'name' => 'Categorías',
-            'route' => route('admin.categories.index'),
-            'active' => request()->routeIs('admin.categories.*'),
-        ],
-        [
-            //Subcategorías de productos
-            'icon' => 'fa-solid fa-tag',
-            'name' => 'Subcategorías',
-            'route' => route('admin.subcategories.index'),
-            'active' => request()->routeIs('admin.subcategories.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-cake-candles',
-            'name' => 'Productos',
-            'route' => route('admin.products.index'),
-            'active' => request()->routeIs('admin.products.*'),
-        ],
-
-        // --- GESTIÓN DE SUPPLY CHAIN (NUEVAS SECCIONES) ---
-        [
-            'icon' => 'fa-solid fa-truck-fast',
-            'name' => 'Proveedores',
-            'route' => route('admin.suppliers.index'),
-            // Activo si la ruta es admin.suppliers.index, create, edit, etc.
-            'active' => request()->routeIs('admin.suppliers.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-warehouse',
-            'name' => 'Almacén',
-            'route' => route('admin.raw_materials.index'),
-            // Activo si la ruta es admin.raw_materials.index, create, edit, etc.
-            'active' => request()->routeIs('admin.raw_materials.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-truck-ramp-box',
-            'name' => 'Pedidos Materia Prima',
-            'route' => route('admin.material_orders.index'),
-            'active' => request()->routeIs('admin.material_orders.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-industry',
-            'name' => 'Producción',
-            'route' => route('admin.productions.index'),
-            'active' => request()->routeIs('admin.productions.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-receipt',
-            'name' => 'Recetas',
-            'route' => route('admin.recipes.index'),
-            'active' => request()->routeIs('admin.recipes.*'),
-        ],
-
-        // --- GESTIÓN DE CLIENTES/WEB ---
-        [
-            'icon' => 'fa-solid fa-basket-shopping',
-            'name' => 'Órdenes', // antes: Pedidos Clientes
-            'route' => route('admin.orders.index'),
-            'active' => request()->routeIs('admin.orders.*'),
-        ],
-        [
-            'icon' => 'fa-solid fa-globe',
-            'name' => 'Contenido Web',
-            'route' => route('admin.covers.index'),
-            'active' => request()->routeIs('admin.covers.*'),
-        ],
+        // [
+        //     //Familias de productos
+        //     'icon' => 'fa-solid fa-box-open',
+        //     'name' => 'Familias',
+        //     'route' => route('admin.families.index'),
+        //     'active' => request()->routeIs('admin.families.*'),
+        // ],
+    
         [
             'icon' => 'fa-solid fa-users',
             'name' => 'Usuarios',

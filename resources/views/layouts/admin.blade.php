@@ -22,10 +22,10 @@
     @livewireStyles
 </head>
 
-<body class="font-sans antialiased" x-data="{ sidebarOpen: false }" :class="{ 'overflow-y-hidden': sidebarOpen }">
+<body class="font-sans antialiased" x-data="{ sidebarOpen: false }" :class="{ 'overflow-y-hidden': sidebarOpen } ">
 
     <!-- Fondo oscuro móvil -->
-    <div class="fixed inset-0 z-20 bg-gray-900 bg-opacity-50 sm:hidden" style="display: none" x-show="sidebarOpen"
+    <div class="fixed inset-0 z-20 dark:bg-opacity-50 dark:bg-gray-900 sm:hidden " style="display: none" x-show="sidebarOpen"
         x-on:click="sidebarOpen = false">
     </div>
 
@@ -33,18 +33,18 @@
     @include('layouts.partials.admin.sidebar')
 
     <!-- Contenedor principal -->
-    <div class="p-4 sm:ml-64">
+    <div class="p-4 sm:ml-64 ">
         <div class="mt-14">
 
-            {{-- 🔹 Botón (slot action) arriba izquierda --}}
+            {{-- Botón (slot action) arriba izquierda --}}
             @isset($action)
                 <div class="flex justify-end mb-4">
                     {{ $action }}
                 </div>
             @endisset
 
-            {{-- 🔹 Contenido principal --}}
-            <div class="p-4 border-2 border-gray-200 border-dashed rounded-lg dark:border-gray-700">
+            {{-- Contenido principal --}}
+            <div class="p-4 border-2 border-gray-200 border-dashed rounded-lg dark:border-gray-700 ">
                 {{ $slot }}
             </div>
         </div>

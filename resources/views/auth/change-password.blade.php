@@ -11,7 +11,7 @@
                 Debes actualizar tu contraseña antes de continuar.
             </p>
 
-            <form action= "{{ route('password.update')  }}">
+            <form action= "{{ route('password.update')  }}" method="POST">
                 @csrf
 
                 <div class="mb-4">

@@ -38,7 +38,7 @@ class User extends Authenticatable
         'role',
         'area_id',
         'group',
-        'supervisor_id',
+        'area_manager_id',
     ];
 
     /**
@@ -89,9 +89,9 @@ class User extends Authenticatable
         return $this->belongsTo(Area::class);
     }
 
-    public function supervisor(): BelongsTo
+    public function areaManager(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'supervisor_id');
+        return $this->belongsTo(User::class, 'area_manager_id');
     }
 
     public function subordinates(): HasMany

@@ -24,7 +24,7 @@ return new class extends Migration
                 ->constrained('areas')
                 ->nullOnDelete();
             $table->string('group')->nullable();
-            $table->unsignedBigInteger('supervisor_id')->nullable();
+            $table->unsignedBigInteger('area_manager_id')->nullable();
             $table->rememberToken();
             $table->foreignId('current_team_id')->nullable();
             $table->string('profile_photo_path', 2048)->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->foreign('supervisor_id')
+            $table->foreign('area_manager_id')
                 ->references('id')
                 ->on('users')
                 ->nullOnDelete();

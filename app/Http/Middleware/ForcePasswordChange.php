@@ -15,11 +15,11 @@ class ForcePasswordChange
             && auth()->user()->must_change_password
             && !$request->routeIs('password.change')
             && !$request->routeIs('password.update')
-            && !$request->routeIs('logout')
         ) {
             return redirect()->route('password.change');
         }
 
+        
         return $next($request);
     }
 }

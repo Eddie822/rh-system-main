@@ -38,7 +38,7 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        //
+        return view('admin.users.show', compact('user'));
     }
 
     /**
@@ -46,8 +46,7 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        //
-    }
+       return view('admin.users.edit', compact('user'));}
 
     /**
      * Update the specified resource in storage.
