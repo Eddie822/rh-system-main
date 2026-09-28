@@ -12,11 +12,14 @@ class ApprovalList extends Component
     use WithPagination;
 
     public $search = '';
+
     public $area = '';
+
     public $week = '';
+
     public $from_date = '';
+
     public $to_date = '';
-    
 
     protected $queryString = [
         'week',
@@ -43,11 +46,13 @@ class ApprovalList extends Component
     public function render()
     {
         $user = auth()->user();
+        abort_unless($user->canApprove(), 403);
 
         $query = RequestModel::with([
             'employee',
             'area',
             'days',
+            'participants',
         ]);
 
         if ($user->role === 'area_manager') {
@@ -66,11 +71,17 @@ class ApprovalList extends Component
 
         if ($this->search) {
 
-            $query->whereHas('employee', function ($q) {
+            $query->where(function ($query) {
+                $query->whereHas('employee', function ($q) {
 
-                $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('last_name', 'like', "%{$this->search}%")
-                ->orWhere('employee_number', 'like', "%{$this->search}%");
+                    $q->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('employee_number', 'like', "%{$this->search}%");
+                })->orWhereHas('participants', function ($q) {
+                    $q->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('employee_number', 'like', "%{$this->search}%");
+                });
             });
         }
 
@@ -78,7 +89,6 @@ class ApprovalList extends Component
 
             $query->where('area_id', $this->area);
         }
-
 
         if ($this->week) {
             $query->where('week', $this->week);

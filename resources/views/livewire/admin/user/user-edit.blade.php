@@ -139,6 +139,16 @@
         {{-- Gerente de área asignado (solo si es worker) --}}
         @if ($role === 'worker')
             <div>
+                <label for="supervisor_id" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Supervisor asignado</label>
+                <select id="supervisor_id" wire:model="supervisor_id" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100">
+                    <option value="">Sin asignar</option>
+                    @foreach ($supervisors as $supervisor)
+                        <option value="{{ $supervisor->id }}">{{ $supervisor->employee_number }} — {{ $supervisor->name }} {{ $supervisor->last_name }}</option>
+                    @endforeach
+                </select>
+                @error('supervisor_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gerente de área
                     asignado</label>
                 <select wire:model="area_manager_id"

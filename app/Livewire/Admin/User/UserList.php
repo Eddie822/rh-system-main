@@ -4,9 +4,9 @@ namespace App\Livewire\Admin\User;
 
 use App\Models\Area;
 use App\Models\User;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Url;
 
 class UserList extends Component
 {
@@ -22,6 +22,7 @@ class UserList extends Component
     public string $areaFilter = '';
 
     public string $sortField = 'name';
+
     public string $sortDirection = 'asc';
 
     protected $paginationTheme = 'tailwind';
@@ -63,16 +64,14 @@ class UserList extends Component
             ->with('area')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
-                    $q->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('last_name', 'like', '%' . $this->search . '%')
-                      ->orWhere('employee_number', 'like', '%' . $this->search . '%');
+                    $q->where('name', 'like', '%'.$this->search.'%')
+                        ->orWhere('last_name', 'like', '%'.$this->search.'%')
+                        ->orWhere('employee_number', 'like', '%'.$this->search.'%');
                 });
             })
-            ->when($this->roleFilter, fn ($query) =>
-                $query->where('role', $this->roleFilter)
+            ->when($this->roleFilter, fn ($query) => $query->where('role', $this->roleFilter)
             )
-            ->when($this->areaFilter, fn ($query) =>
-                $query->where('area_id', $this->areaFilter)
+            ->when($this->areaFilter, fn ($query) => $query->where('area_id', $this->areaFilter)
             )
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate(15);
@@ -82,6 +81,7 @@ class UserList extends Component
             'areas' => Area::orderBy('name')->get(),
             'roles' => [
                 'worker' => 'Trabajador',
+                'supervisor' => 'Supervisor',
                 'area_manager' => 'Gerente de Área',
                 'hr_manager' => 'Gerente de RH',
                 'plant_manager' => 'Gerente de Planta',

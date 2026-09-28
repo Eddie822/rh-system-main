@@ -12,6 +12,7 @@ class RequestDay extends Model
 
     protected $fillable = [
         'request_id',
+        'employee_id',
         'day_name',   // Ej: "Monday"
         'day_date',   // Ej: "2026-09-07"
         'hours',      // Ej: 8.5 (decimal)
@@ -35,5 +36,10 @@ class RequestDay extends Model
     public function request(): BelongsTo
     {
         return $this->belongsTo(Request::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employee_id');
     }
 }

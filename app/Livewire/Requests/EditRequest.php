@@ -6,6 +6,7 @@ use App\Models\Request;
 use App\Models\RequestDay;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class EditRequest extends Component
@@ -13,37 +14,40 @@ class EditRequest extends Component
     public Request $request;
 
     public $group;
+
     public $reason;
 
     public $rows = [];
 
     public function mount(Request $request)
     {
+        Gate::authorize('update', $request);
+        abort_if($request->is_group, 403);
         $this->request = $request;
 
         $this->group = $request->group;
         $this->reason = $request->reason;
 
-       $this->rows = $request->days
-    ->map(fn ($day) => [
-        'id' => $day->id,
-        'day_date' => $day->day_date->format('Y-m-d'),
-        'hours' => $day->hours,
-    ])
-    ->toArray();
+        $this->rows = $request->days
+            ->map(fn ($day) => [
+                'id' => $day->id,
+                'day_date' => $day->day_date->format('Y-m-d'),
+                'hours' => $day->hours,
+            ])
+            ->toArray();
     }
 
-   protected function rules()
-{
-    return [
-        'group' => 'required|string|max:255',
-        'reason' => 'required|string|max:255',
+    protected function rules()
+    {
+        return [
+            'group' => 'required|string|max:255',
+            'reason' => 'required|string|max:255',
 
-        'rows' => 'required|array|min:1',
-        'rows.*.day_date' => 'required|date|after:today',
-        'rows.*.hours' => 'required|numeric|min:0|max:12',
-    ];
-}
+            'rows' => 'required|array|min:1',
+            'rows.*.day_date' => 'required|date|after:today',
+            'rows.*.hours' => 'required|numeric|min:0|max:12',
+        ];
+    }
 
     public function addRow()
     {
@@ -62,81 +66,85 @@ class EditRequest extends Component
     }
 
     public function save()
-{
-    $validated = $this->validate();
+    {
+        $validated = $this->validate();
 
-    // Fechas duplicadas
-    $dates = collect($validated['rows'])
-        ->pluck('day_date');
+        // Fechas duplicadas
+        $dates = collect($validated['rows'])
+            ->pluck('day_date');
 
-    if ($dates->duplicates()->isNotEmpty()) {
+        if ($dates->duplicates()->isNotEmpty()) {
 
-        foreach ($validated['rows'] as $index => $row) {
+            foreach ($validated['rows'] as $index => $row) {
 
-            if (
-                $dates->duplicates()
-                    ->contains($row['day_date'])
-            ) {
-                $this->addError(
-                    "rows.$index.day_date",
-                    'Esta fecha ya fue seleccionada.'
-                );
+                if (
+                    $dates->duplicates()
+                        ->contains($row['day_date'])
+                ) {
+                    $this->addError(
+                        "rows.$index.day_date",
+                        'Esta fecha ya fue seleccionada.'
+                    );
+                }
             }
+
+            return;
         }
 
-        return;
-    }
+        // Misma semana
+        $weeks = collect($validated['rows'])
+            ->pluck('day_date')
+            ->map(fn ($date) => Carbon::parse($date)->weekOfYear)
+            ->unique();
 
-    // Misma semana
-    $weeks = collect($validated['rows'])
-        ->pluck('day_date')
-        ->map(fn ($date) => Carbon::parse($date)->weekOfYear)
-        ->unique();
+        if ($weeks->count() > 1) {
 
-    if ($weeks->count() > 1) {
+            $this->addError(
+                'rows',
+                'Todas las fechas deben pertenecer a la misma semana.'
+            );
 
-        $this->addError(
-            'rows',
-            'Todas las fechas deben pertenecer a la misma semana.'
+            return;
+        }
+
+        $week = $weeks->first();
+
+        DB::transaction(function () use ($validated, $week) {
+
+            $this->request = Request::lockForUpdate()->findOrFail($this->request->id);
+            Gate::authorize('update', $this->request);
+            abort_if($this->request->is_group, 403);
+
+            $this->request->update([
+                'group' => $validated['group'],
+                'reason' => $validated['reason'],
+                'week' => $week,
+            ]);
+
+            $this->request->days()->delete();
+
+            foreach ($validated['rows'] as $row) {
+
+                $date = Carbon::parse($row['day_date']);
+
+                RequestDay::create([
+                    'request_id' => $this->request->id,
+                    'day_name' => ucfirst(
+                        $date->locale('es')->dayName
+                    ),
+                    'day_date' => $row['day_date'],
+                    'hours' => $row['hours'],
+                ]);
+            }
+        });
+
+        session()->flash(
+            'success',
+            'Solicitud actualizada correctamente.'
         );
 
-        return;
+        return redirect()->route('requests.index');
     }
-
-    $week = $weeks->first();
-
-    DB::transaction(function () use ($validated, $week) {
-
-        $this->request->update([
-            'group' => $validated['group'],
-            'reason' => $validated['reason'],
-            'week' => $week,
-        ]);
-
-        $this->request->days()->delete();
-
-        foreach ($validated['rows'] as $row) {
-
-            $date = Carbon::parse($row['day_date']);
-
-            RequestDay::create([
-                'request_id' => $this->request->id,
-                'day_name' => ucfirst(
-                    $date->locale('es')->dayName
-                ),
-                'day_date' => $row['day_date'],
-                'hours' => $row['hours'],
-            ]);
-        }
-    });
-
-    session()->flash(
-        'success',
-        'Solicitud actualizada correctamente.'
-    );
-
-    return redirect()->route('requests.index');
-}
 
     public function render()
     {

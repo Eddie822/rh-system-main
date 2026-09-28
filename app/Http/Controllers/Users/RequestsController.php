@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Users;
 use App\Http\Controllers\Controller;
 use App\Models\Request as RequestModel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class RequestsController extends Controller
 {
@@ -13,42 +14,7 @@ class RequestsController extends Controller
      */
     public function index()
     {
-        $requests = RequestModel::with('days')
-            ->where('employee_id', auth()->id());
-
-        if (request('status')) {
-            $requests->where('status', request('status'));
-        }
-
-        if (request('week')) {
-            $requests->where('week', request('week'));
-        }
-
-        if (request('from_date')) {
-            $requests->whereDate(
-                'created_at',
-                '>=',
-                request('from_date')
-            );
-        }
-
-        if (request('to_date')) {
-            $requests->whereDate(
-                'created_at',
-                '<=',
-                request('to_date')
-            );
-        }
-
-        $requests = $requests
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
-
-        return view(
-            'users.requests.index',
-            compact('requests')
-        );
+        return view('users.requests.index');
     }
 
     /**
@@ -70,9 +36,11 @@ class RequestsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Request $request)
+    public function show(RequestModel $request)
     {
-        //
+        Gate::authorize('view', $request);
+
+        return view('approval.show', compact('request'));
     }
 
     /**
@@ -80,15 +48,11 @@ class RequestsController extends Controller
      */
     public function edit(RequestModel $request)
     {
-        abort_if(
-                $request->employee_id !== auth()->id(),
-                            403
-                );
-        abort_if(
-    $request->status !== 'pending_area_manager',
-                            403,
-                        'La solicitud ya no puede modificarse.'
-            );
+        Gate::authorize('update', $request);
+        if ($request->is_group) {
+            return view('users.requests.group', compact('request'));
+        }
+
         return view('users.requests.edit', compact('request'));
     }
 

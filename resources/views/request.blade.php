@@ -46,7 +46,11 @@
                 </button>
             </div>
 
-            <livewire:requests.request-form />
+            @if (auth()->user()->role === 'supervisor')
+                <livewire:requests.group-request-form />
+            @else
+                <livewire:requests.request-form />
+            @endif
             <p class="mt-6 text-center">
                 1. El trabajador que cumpla con una Jornada de 48 hrs, solo podrá programar hasta 12 hrs como Descanso
                 Laborado durante la misma semana de pago.

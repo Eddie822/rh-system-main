@@ -11,24 +11,35 @@ class RequestList extends Component
     use WithPagination;
 
     public $status = '';
+
     public $week = '';
+
     public $from_date = '';
+
     public $to_date = '';
 
+    public function updating(): void
+    {
+        $this->resetPage();
+    }
 
     public function clearFilters()
     {
-            $this->reset([
+        $this->reset([
             'status',
             'week',
             'from_date',
             'to_date',
         ]);
+        $this->resetPage();
     }
+
     public function render()
     {
-        $requests = Request::with('days')
-            ->where('employee_id', auth()->id())
+        $requests = Request::with(['days' => fn ($query) => $query->where(fn ($query) => $query
+            ->whereNull('employee_id')->orWhere('employee_id', auth()->id())
+            ->orWhereHas('request', fn ($query) => $query->where('employee_id', auth()->id())))])
+            ->forEmployee(auth()->user())
 
             ->when($this->status, function ($query) {
                 $query->where('status', $this->status);

@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\ForcePasswordChange;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Route::aliasMiddleware('admin', AdminMiddleware::class);
+        Livewire::addPersistentMiddleware([
+            AdminMiddleware::class,
+            ForcePasswordChange::class,
+        ]);
 
     }
 }

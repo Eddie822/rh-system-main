@@ -2,8 +2,9 @@
 
 namespace App\Livewire\Approvals;
 
-use App\Models\Authorization;
+use App\Actions\DecideRequest;
 use App\Models\Request as RequestModel;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class ApprovalShow extends Component
@@ -14,125 +15,52 @@ class ApprovalShow extends Component
 
     public string $rejectReason = '';
 
-    public function mount(RequestModel $request)
+    public function mount(RequestModel $request): void
     {
-        $this->request = $request->load([
-            'employee',
-            'area',
-            'days',
-            'authorizations.user',
-        ]);
-
-        abort_unless(
-            auth()->user()->canApprove(),
-            403
-        );
+        Gate::authorize('view', $request);
+        $this->request = $request;
     }
 
     public function approve()
     {
-        if (! $this->canApproveRequest()) {
-            abort(403);
-        }
-
-        Authorization::create([
-            'request_id'         => $this->request->id,
-            'user_id'            => auth()->id(),
-            'authorization_role' => auth()->user()->role,
-            'action'             => 'approved',
-            'reason'             => null,
-            'timestamp'          => now(),
-        ]);
-
-        match (auth()->user()->role) {
-
-            'area_manager' => $this->request->update([
-                'status' => 'pending_hr_manager',
-            ]),
-
-            'hr_manager' => $this->request->update([
-                'status' => 'pending_plant_manager',
-            ]),
-
-            'plant_manager' => $this->request->update([
-                'status' => 'approved',
-            ]),
-        };
-
-        session()->flash(
-            'success',
-            'Solicitud aprobada correctamente.'
-        );
+        app(DecideRequest::class)->handle($this->request, auth()->user(), 'approved');
+        session()->flash('success', 'Solicitud aprobada correctamente.');
 
         return redirect()->route('approvals.index');
     }
 
-    public function openRejectModal()
+    public function openRejectModal(): void
     {
+        Gate::authorize('approve', $this->request->fresh());
         $this->showRejectModal = true;
     }
 
-    public function closeRejectModal()
+    public function closeRejectModal(): void
     {
         $this->showRejectModal = false;
         $this->reset('rejectReason');
     }
+
     public function reject()
     {
-        $this->validate([
-            'rejectReason' => 'required|string|min:5|max:500',
-        ]);
-
-        if (! $this->canApproveRequest()) {
-            abort(403);
-        }
-
-        Authorization::create([
-            'request_id'         => $this->request->id,
-            'user_id'            => auth()->id(),
-            'authorization_role' => auth()->user()->role,
-            'action'             => 'rejected',
-            'reason'             => $this->rejectReason,
-            'timestamp'          => now(),
-        ]);
-
-        $this->request->update([
-            'status' => 'rejected',
-        ]);
-
-        $this->showRejectModal = false;
-
-        $this->reset('rejectReason');
-
-        session()->flash(
-            'success',
-            'Solicitud rechazada correctamente.'
-        );
+        $this->validate(['rejectReason' => 'required|string|min:5|max:500']);
+        app(DecideRequest::class)->handle($this->request, auth()->user(), 'rejected', $this->rejectReason);
+        session()->flash('success', 'Solicitud rechazada correctamente.');
 
         return redirect()->route('approvals.index');
-    }
-
-    protected function canApproveRequest(): bool
-    {
-        return match (auth()->user()->role) {
-
-            'area_manager'
-                => $this->request->status === 'pending_area_manager',
-
-            'hr_manager'
-                => $this->request->status === 'pending_hr_manager',
-
-            'plant_manager'
-                => $this->request->status === 'pending_plant_manager',
-
-            default => false,
-        };
     }
 
     public function render()
     {
-        return view(
-            'livewire.approvals.approval-show'
-        );
+        $this->request->refresh();
+        Gate::authorize('view', $this->request);
+        $this->request->load(['employee', 'area', 'authorizations.user']);
+        $canSeeGroup = $this->request->employee_id === auth()->id()
+            || Gate::allows('viewApproval', $this->request);
+        $days = $this->request->days()->with('employee')
+            ->when($this->request->is_group && ! $canSeeGroup, fn ($query) => $query->where('employee_id', auth()->id()))
+            ->orderBy('employee_id')->orderBy('day_date')->get();
+
+        return view('livewire.approvals.approval-show', compact('days'));
     }
 }

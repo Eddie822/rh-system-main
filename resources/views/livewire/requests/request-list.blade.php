@@ -4,6 +4,12 @@
         Mis Solicitudes
     </h2>
 
+    @if (session('success'))
+        <p role="status" class="p-4 mb-4 text-green-800 bg-green-50 rounded-lg">{{ session('success') }}</p>
+    @endif
+    @if (auth()->user()->role === 'supervisor')
+        <a href="{{ route('requests.group.create') }}" class="inline-block px-4 py-2 mb-4 text-white bg-blue-600 rounded-lg">Nueva solicitud grupal</a>
+    @endif
     {{-- Filtros --}}
     <div class="p-4 mb-6 bg-white rounded-lg shadow dark:bg-gray-900">
 
@@ -128,6 +134,7 @@
 
                             <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
                                 #{{ $request->id }}
+                                @if ($request->is_group) <span class="block text-xs">Grupal</span> @endif
                             </td>
 
                             <td class="px-6 py-4">
@@ -198,7 +205,8 @@
 
                             <td class="px-6 py-4">
 
-                                @if($request->status === 'pending_area_manager')
+                                <a class="block mb-2 text-blue-600" href="{{ route('requests.show', $request) }}">Ver seguimiento</a>
+                                @if(auth()->user()->can('update', $request))
 
                                     <a class="p-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" href="{{ route('requests.edit', $request) }}">
                                         Editar

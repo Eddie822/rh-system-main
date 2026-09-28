@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -39,6 +40,7 @@ class User extends Authenticatable
         'area_id',
         'group',
         'area_manager_id',
+        'supervisor_id',
     ];
 
     /**
@@ -78,9 +80,9 @@ class User extends Authenticatable
     public function canApprove(): bool
     {
         return in_array($this->role, [
-         'area_manager',
-         'hr_manager',
-         'plant_manager',
+            'area_manager',
+            'hr_manager',
+            'plant_manager',
         ]);
     }
 
@@ -99,9 +101,19 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'supervisor_id');
     }
 
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
     public function requests(): HasMany
     {
         return $this->hasMany(Request::class, 'employee_id');
+    }
+
+    public function groupRequests(): BelongsToMany
+    {
+        return $this->belongsToMany(Request::class, 'request_employees', 'employee_id', 'request_id');
     }
 
     public function authorizations(): HasMany
@@ -109,4 +121,3 @@ class User extends Authenticatable
         return $this->hasMany(Authorization::class);
     }
 }
-

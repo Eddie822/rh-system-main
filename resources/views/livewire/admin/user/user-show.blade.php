@@ -63,6 +63,9 @@
                 </dd>
             </div>
         </dl>
+        @if ($user->role === 'worker')
+            <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">Supervisor: {{ $user->supervisor?->name ?? 'Sin asignar' }} {{ $user->supervisor?->last_name }}</p>
+        @endif
     </div>
 
     {{-- Historial de solicitudes --}}

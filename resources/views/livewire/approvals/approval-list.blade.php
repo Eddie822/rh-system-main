@@ -80,6 +80,7 @@
                             </td>
 
                             <td class="px-6 py-4">
+                                @if ($request->is_group) <span class="block font-semibold">Grupal ({{ $request->participants->count() }} empleados)</span> @endif
                                 {{ $request->employee->name }}
                                 {{ $request->employee->last_name }}
                             </td>
@@ -89,7 +90,7 @@
                             </td>
 
                             <td class="px-6 py-4">
-                                {{ $request->area->name }}
+                                {{ $request->area?->name ?? 'Sin área' }}
                             </td>
 
                             <td class="px-6 py-4">

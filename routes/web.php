@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Managers\Approval\ApprovalController;
 use App\Http\Controllers\Users\RequestsController;
+use App\Models\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -30,7 +32,13 @@ Route::middleware([
         return view('request');
     })->name('request');
 
+    Route::get('/requests/group/create', function () {
+        Gate::authorize('createGroup', Request::class);
+
+        return view('users.requests.group');
+    })->name('requests.group.create');
+
     Route::resource('requests', RequestsController::class);
 
     Route::resource('approvals', ApprovalController::class);
-});     
+});

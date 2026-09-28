@@ -43,7 +43,8 @@ class Dashboard extends Component
             ->setHeight(320)
             ->setColors(['#3b82f6'])
             ->addData($data->pluck('requests_count')->toArray(), 'Solicitudes')
-            ->setXAxis($data->pluck('name')->toArray());
+            ->setXAxis($data->pluck('name')->toArray())
+            ->setLabels(['name']);
     }
 
     protected function authorizationChart(string $role, string $label): LarapexChart

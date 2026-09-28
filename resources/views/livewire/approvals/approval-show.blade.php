@@ -13,13 +13,13 @@
             </p>
         </div>
 
-        <a href="{{ route('approvals.index') }}"
+        <a href="{{ route(auth()->user()->canApprove() ? 'approvals.index' : 'requests.index') }}"
             class="px-4 py-2 text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700 dark:bgbg-white dark:bg-gray-800">
             Volver
         </a>
 
         <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-            Información del Empleado
+            {{ $request->is_group ? 'Supervisor solicitante' : 'Información del Empleado' }}
         </h2>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -48,7 +48,7 @@
                     Área
                 </span>
                 <p class="font-medium text-gray-900 dark:text-white">
-                    {{ $request->area->name }}
+                    {{ $request->area?->name ?? 'Sin área' }}
                 </p>
             </div>
 
@@ -153,6 +153,14 @@
 
     </div>
 
+    @if ($request->is_group)
+        <p class="p-4 text-blue-800 bg-blue-50 rounded-lg dark:bg-gray-800 dark:text-blue-200">
+            Solicitud grupal: cada aprobación o rechazo se aplica a todos los empleados incluidos.
+            @if ($request->employee_id !== auth()->id() && ! auth()->user()->can('viewApproval', $request))
+                Aquí se muestran únicamente tus fechas y horas.
+            @endif
+        </p>
+    @endif
     {{-- Fechas --}}
     <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
 
@@ -164,7 +172,7 @@
 
             <span
                 class="px-3 py-1 font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-200">
-                Total: {{ number_format($request->days->sum('hours'), 2) }} hrs
+                Total: {{ number_format($days->sum('hours'), 2) }} hrs
             </span>
 
         </div>
@@ -175,7 +183,9 @@
 
                 <thead>
                     <tr class="border-b border-gray-200 dark:border-gray-700">
-
+                        @if ($request->is_group)
+                            <th class="py-3 text-left text-gray-700 dark:text-gray-300">Empleado / Nómina</th>
+                        @endif
                         <th class="py-3 text-left text-gray-700 dark:text-gray-300">
                             Día
                         </th>
@@ -193,8 +203,11 @@
 
                 <tbody>
 
-                    @foreach ($request->days as $day)
+                    @foreach ($days as $day)
                         <tr class="border-b border-gray-200 dark:border-gray-700">
+                            @if ($request->is_group)
+                                <td class="py-3 text-gray-900 dark:text-gray-200">{{ $day->employee?->name }} {{ $day->employee?->last_name }} / {{ $day->employee?->employee_number }}</td>
+                            @endif
 
                             <td class="py-3 text-gray-900 dark:text-gray-200">
                                 {{ $day->day_name }}
@@ -284,7 +297,7 @@
                     </p>
 
                     <p class="text-xs text-gray-500">
-                        {{ $authorization->timestamp }}
+                        {{ $authorization->created_at->format('d/m/Y H:i') }}
                     </p>
 
                 </div>
@@ -300,10 +313,7 @@
         </div>
 
         {{-- Acciones --}}
-        @if (
-            ($request->status === 'pending_area_manager' && auth()->user()->role === 'area_manager') ||
-                ($request->status === 'pending_hr_manager' && auth()->user()->role === 'hr_manager') ||
-                ($request->status === 'pending_plant_manager' && auth()->user()->role === 'plant_manager'))
+        @if (auth()->user()->can('approve', $request))
             <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
 
                 <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">

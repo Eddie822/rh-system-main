@@ -4,21 +4,31 @@ namespace App\Livewire\Admin\User;
 
 use App\Models\Area;
 use App\Models\User;
-use Livewire\Component;
 use Illuminate\Validation\Rule;
+use Livewire\Component;
 
 class UserEdit extends Component
 {
     public User $user;
 
     public string $name = '';
+
     public string $last_name = '';
+
     public string $employee_number = '';
+
     public ?string $password = null;
+
     public ?string $password_confirmation = null;
+
     public string $role = '';
+
     public ?int $area_id = null;
+
     public ?int $area_manager_id = null;
+
+    public ?int $supervisor_id = null;
+
     public ?string $group = null;
 
     public bool $showSuccess = false;
@@ -32,6 +42,7 @@ class UserEdit extends Component
         $this->role = $user->role;
         $this->area_id = $user->area_id;
         $this->area_manager_id = $user->area_manager_id;
+        $this->supervisor_id = $user->supervisor_id;
         $this->group = $user->group;
     }
 
@@ -40,15 +51,15 @@ class UserEdit extends Component
         return [
             'name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.confirmed' => 'La confirmación de la contraseña no coincide.',           
-             'employee_number' => [
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'employee_number' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('users', 'employee_number')->ignore($this->user->id),
             ],
-            'role' => ['required', Rule::in(['worker', 'area_manager', 'hr_manager', 'plant_manager', 'admin'])],
+            'role' => ['required', Rule::in(['worker', 'supervisor', 'area_manager', 'hr_manager', 'plant_manager', 'admin'])],
+            'supervisor_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'supervisor'), Rule::notIn([$this->user->id])],
             'area_id' => ['nullable', 'exists:areas,id'],
             'area_manager_id' => [
                 'nullable',
@@ -82,12 +93,16 @@ class UserEdit extends Component
 
     public function save()
     {
+        abort_unless(in_array(auth()->user()->role, ['admin', 'rh', 'hr_manager', 'it'], true), 403);
         $validated = $this->validate();
 
         if (empty($validated['password'])) {
             unset($validated['password']);
         }
         unset($validated['password_confirmation']);
+        if ($validated['role'] !== 'worker') {
+            $validated['supervisor_id'] = null;
+        }
 
         $this->user->update($validated);
 
@@ -102,12 +117,14 @@ class UserEdit extends Component
     {
         return view('livewire.admin.user.user-edit', [
             'areas' => Area::orderBy('name')->get(),
+            'supervisors' => User::where('role', 'supervisor')->whereKeyNot($this->user->id)->orderBy('name')->get(),
             'areaManagers' => User::where('id', '!=', $this->user->id)
                 ->where('role', 'area_manager')
                 ->orderBy('name')
                 ->get(),
             'roles' => [
                 'worker' => 'Trabajador',
+                'supervisor' => 'Supervisor',
                 'area_manager' => 'Gerente de Área',
                 'hr_manager' => 'Gerente de RH',
                 'plant_manager' => 'Gerente de Planta',
