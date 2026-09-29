@@ -17,6 +17,8 @@ class ApprovalList extends Component
 
     public $week = '';
 
+    public $deadline = '';
+
     public $from_date = '';
 
     public $to_date = '';
@@ -36,6 +38,7 @@ class ApprovalList extends Component
     {
         $this->reset([
             'week',
+            'deadline',
             'from_date',
             'to_date',
         ]);
@@ -110,7 +113,10 @@ class ApprovalList extends Component
             );
         }
 
-        $areas = Area::all();
+        $query->when($this->deadline === 'soon', fn ($query) => $query->expiringSoon())
+            ->when($this->deadline === 'overdue', fn ($query) => $query->overdue());
+
+        $areas = Area::orderBy('name')->get();
 
         $requests = $query
             ->latest()

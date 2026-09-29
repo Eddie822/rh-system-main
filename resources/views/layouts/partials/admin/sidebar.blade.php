@@ -26,6 +26,14 @@
             'active' => request()->routeIs('admin.users.*'),
         ],
     ];
+    if (auth()->user()->can('viewReports')) {
+        $links[] = [
+            'icon' => 'fa-solid fa-file-excel',
+            'name' => 'Reportes',
+            'route' => route('admin.reports.index'),
+            'active' => request()->routeIs('admin.reports.*'),
+        ];
+    }
 @endphp
 
 <aside id="logo-sidebar"

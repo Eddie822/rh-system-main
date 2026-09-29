@@ -7,6 +7,16 @@
         Panel de control
     </h1>
 
+    @if ($expiringSoon || $overdue)
+        <div role="status" class="p-4 text-amber-900 border border-amber-200 rounded-lg bg-amber-50 dark:bg-gray-800 dark:text-amber-200">
+            <h2 class="font-semibold">Atención a solicitudes pendientes</h2>
+            <p>{{ $expiringSoon }} por vencer en las próximos {{ config('requests.expiration_notice_hours') / 24 }} días · {{ $overdue }} vencidas.</p>
+            <p class="mt-1 text-sm">El vencimiento no bloquea las aprobaciones.</p>
+            @if (auth()->user()->canApprove())
+                <a href="{{ route('approvals.index') }}" class="inline-block mt-2 underline">Revisar aprobaciones</a>
+            @endif
+        </div>
+    @endif
     {{-- Indicadores --}}
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <div class="p-4 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-xl">

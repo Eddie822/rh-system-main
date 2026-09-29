@@ -1,4 +1,4 @@
-<div class="px-4 py-6 mx-auto max-w-7xl">
+<div wire:poll.60s class="px-4 py-6 mx-auto max-w-7xl">
 
     <h2 class="mb-6 text-2xl font-semibold text-black dark:text-white">
         Bandeja de Aprobaciones
@@ -48,6 +48,15 @@
         </div>
     </div>
 
+    <div class="mb-4">
+        <label for="deadline-filter" class="block mb-1 text-sm text-gray-700 dark:text-gray-300">Vencimiento de solicitudes pendientes</label>
+        <select id="deadline-filter" wire:model.live="deadline" class="border-gray-300 rounded-lg dark:bg-gray-800 dark:text-white">
+            <option value="">Todas</option>
+            <option value="soon">Por vencer (próximos {{ config('requests.expiration_notice_hours') / 24 }} días)</option>
+            <option value="overdue">Vencidas</option>
+        </select>
+    </div>
+
     @if ($requests->count())
         <div class="overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-900">
 
@@ -64,6 +73,7 @@
                         <th class="px-6 py-3">Grupo</th>
                         <th class="px-6 py-3">Justificación</th>
                         <th class="px-6 py-3">Horas</th>
+                        <th class="px-6 py-3">Vencimiento</th>
                         <th class="px-6 py-3">Creada</th>
                         <th class="px-6 py-3">Acciones</th>
                     </tr>
@@ -109,6 +119,7 @@
                                 {{ number_format($request->days->sum('hours'), 2) }}
                             </td>
 
+                            <td class="px-6 py-4"><x-request-expiration :request="$request" /></td>
                             <td class="px-6 py-4">
                                 {{ $request->created_at->format('d/m/Y') }}
                             </td>

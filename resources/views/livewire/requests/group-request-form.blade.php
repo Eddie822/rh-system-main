@@ -9,6 +9,8 @@
         <p role="status" class="p-4 text-amber-800 rounded-lg bg-amber-50">No tienes trabajadores asignados. Solicita a administración que asigne tus empleados antes de crear una solicitud.</p>
     @endif
 
+    <p class="text-sm text-amber-800 dark:text-amber-200">El plazo vence al iniciar la primera fecha de horas extra. Se avisa desde cinco días antes del vencimiento; una solicitud vencida aún puede aprobarse.</p>
+
     <form wire:submit="save" class="space-y-6">
         <x-validation-errors />
         <div class="grid gap-4 md:grid-cols-2">

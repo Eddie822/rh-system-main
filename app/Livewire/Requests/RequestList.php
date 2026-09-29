@@ -14,6 +14,8 @@ class RequestList extends Component
 
     public $week = '';
 
+    public $deadline = '';
+
     public $from_date = '';
 
     public $to_date = '';
@@ -28,6 +30,7 @@ class RequestList extends Component
         $this->reset([
             'status',
             'week',
+            'deadline',
             'from_date',
             'to_date',
         ]);
@@ -40,6 +43,8 @@ class RequestList extends Component
             ->whereNull('employee_id')->orWhere('employee_id', auth()->id())
             ->orWhereHas('request', fn ($query) => $query->where('employee_id', auth()->id())))])
             ->forEmployee(auth()->user())
+            ->when($this->deadline === 'soon', fn ($query) => $query->expiringSoon())
+            ->when($this->deadline === 'overdue', fn ($query) => $query->overdue())
 
             ->when($this->status, function ($query) {
                 $query->where('status', $this->status);

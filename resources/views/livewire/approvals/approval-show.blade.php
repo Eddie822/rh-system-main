@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div wire:poll.60s class="space-y-6">
 
     {{-- Encabezado --}}
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -65,6 +65,11 @@
 
     </div>
 
+    <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 dark:text-white">
+        <h2 class="font-semibold">Vencimiento de la solicitud</h2>
+        <x-request-expiration :request="$request" class="mt-2" />
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Se avisa cinco días antes. El plazo vence a las 00:00 de la primera fecha de horas extra ({{ config('app.timezone') }}). El vencimiento es informativo y no bloquea la aprobación.</p>
+    </div>
     {{-- Información Solicitud --}}
     <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
 

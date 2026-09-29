@@ -13,6 +13,8 @@ class Dashboard extends Component
     public function render()
     {
         return view('livewire.admin.dashboard', [
+            'expiringSoon' => RequestModel::expiringSoon()->count(),
+            'overdue' => RequestModel::overdue()->count(),
             'indicators' => $this->getIndicators(),
             'requestsByAreaChart' => $this->requestsByAreaChart(),
             'areaManagerChart' => $this->authorizationChart('area_manager', 'Gerentes de Área'),

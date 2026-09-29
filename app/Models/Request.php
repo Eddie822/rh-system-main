@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,12 +30,48 @@ class Request extends Model
         return [
             'is_group' => 'boolean',
             'request_date' => 'date',
+            'expires_at' => 'datetime',
         ];
     }
 
     public function employee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function syncExpiration(): void
+    {
+        $firstDay = $this->days()->min('day_date');
+        $this->expires_at = $firstDay ? Carbon::parse($firstDay)->startOfDay() : null;
+        $this->saveQuietly();
+    }
+
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['pending_area_manager', 'pending_hr_manager', 'pending_plant_manager']);
+    }
+
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->pending()->where('expires_at', '<=', now());
+    }
+
+    public function scopeExpiringSoon(Builder $query): Builder
+    {
+        return $query->pending()->where('expires_at', '>', now())
+            ->where('expires_at', '<=', now()->addHours(config('requests.expiration_notice_hours')));
+    }
+
+    public function expirationAlert(): ?string
+    {
+        if (! $this->expires_at || ! in_array($this->status, ['pending_area_manager', 'pending_hr_manager', 'pending_plant_manager'], true)) {
+            return null;
+        }
+        if ($this->expires_at->lte(now())) {
+            return 'overdue';
+        }
+
+        return $this->expires_at->lte(now()->addHours(config('requests.expiration_notice_hours'))) ? 'soon' : null;
     }
 
     // For group requests employee_id identifies the submitting supervisor.

@@ -10,6 +10,12 @@ class RequestDay extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::saved(fn (RequestDay $day) => $day->request?->syncExpiration());
+        static::deleted(fn (RequestDay $day) => $day->request?->syncExpiration());
+    }
+
     protected $fillable = [
         'request_id',
         'employee_id',

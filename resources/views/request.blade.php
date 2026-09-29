@@ -46,6 +46,7 @@
                 </button>
             </div>
 
+            <p class="mb-4 text-sm text-amber-800 dark:text-amber-200">Aviso de vencimiento: desde cinco días antes de la primera fecha de horas extra. La solicitud vence al iniciar esa fecha. Las solicitudes vencidas aún pueden aprobarse.</p>
             @if (auth()->user()->role === 'supervisor')
                 <livewire:requests.group-request-form />
             @else
