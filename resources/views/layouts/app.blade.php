@@ -52,6 +52,9 @@
 
     @livewireScripts
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('layouts.partials.confirm-delete')
+
     {{-- Save dark mode --}}
     <script>
         if (localStorage.getItem('theme') === 'dark') {

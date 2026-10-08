@@ -141,11 +141,11 @@
                                 {{ __('Profile') }}
                             </x-dropdown-link>
 
-                            @if ((auth()->check() && auth()->user()->role === 'admin') || auth()->user()->role === 'rh')
+                            @can('accessAdminPanel')
                                 <x-dropdown-link href="{{ route('admin.dashboard') }}">
                                     {{ __('Panel de administrador') }}
                                 </x-dropdown-link>
-                            @endif
+                            @endcan
 
                             @if (Laravel\Jetstream\Jetstream::hasApiFeatures())
                                 <x-dropdown-link href="{{ route('api-tokens.index') }}">
@@ -188,11 +188,11 @@
     <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
 
-            @if ((auth()->check() && auth()->user()->role === 'admin') || auth()->user()->role === 'rh')
+            @can('accessAdminPanel')
                 <x-responsive-nav-link href="{{ route('admin.dashboard') }}">
                     {{ __('Panel de administrador') }}
                 </x-responsive-nav-link>
-            @endif
+            @endcan
             <x-responsive-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
                 {{ __('Solicitudes') }}
             </x-responsive-nav-link>

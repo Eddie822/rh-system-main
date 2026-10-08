@@ -130,7 +130,7 @@
                                     <td class="p-2 text-center">
 
                                         @if (count($rows) > 1)
-                                            <button type="button" wire:click="removeRow({{ $index }})"
+                                            <button type="button" data-delete-action="Quitar" data-delete-label="esta fecha" onclick="confirmLivewireDeletion(event, this, 'removeRow', {{ $index }})"
                                                 class="text-red-600 dark:text-red-400 hover:underline">
                                                 Eliminar
                                             </button>

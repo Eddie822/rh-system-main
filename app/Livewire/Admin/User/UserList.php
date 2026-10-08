@@ -60,6 +60,8 @@ class UserList extends Component
 
     public function render()
     {
+        abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+
         $users = User::query()
             ->with('area')
             ->when($this->search, function ($query) {
@@ -85,7 +87,6 @@ class UserList extends Component
                 'area_manager' => 'Gerente de Área',
                 'hr_manager' => 'Gerente de RH',
                 'plant_manager' => 'Gerente de Planta',
-                'admin' => 'Administrador',
             ],
         ]);
     }

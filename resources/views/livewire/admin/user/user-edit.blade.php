@@ -139,16 +139,6 @@
         {{-- Gerente de área asignado (solo si es worker) --}}
         @if ($role === 'worker')
             <div>
-                <label for="supervisor_id" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Supervisor asignado</label>
-                <select id="supervisor_id" wire:model="supervisor_id" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100">
-                    <option value="">Sin asignar</option>
-                    @foreach ($supervisors as $supervisor)
-                        <option value="{{ $supervisor->id }}">{{ $supervisor->employee_number }} — {{ $supervisor->name }} {{ $supervisor->last_name }}</option>
-                    @endforeach
-                </select>
-                @error('supervisor_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-            </div>
-            <div>
                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gerente de área
                     asignado</label>
                 <select wire:model="area_manager_id"
@@ -163,6 +153,19 @@
                 @error('area_manager_id')
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
+            </div>
+        @endif
+
+        @if ($role !== 'plant_manager')
+            <div>
+                <label for="direct_manager_number" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Nómina del jefe directo</label>
+                <input type="text" id="direct_manager_number" wire:model="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100" />
+                <datalist id="direct-manager-options">
+                    @foreach ($directManagers as $manager)
+                        <option value="{{ $manager->employee_number }}">{{ $manager->employee_number }} — {{ $manager->name }} {{ $manager->last_name }}</option>
+                    @endforeach
+                </datalist>
+                @error('direct_manager_number') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
             </div>
         @endif
 

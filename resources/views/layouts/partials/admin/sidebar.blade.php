@@ -18,7 +18,7 @@
         //     'route' => route('admin.families.index'),
         //     'active' => request()->routeIs('admin.families.*'),
         // ],
-    
+
         [
             'icon' => 'fa-solid fa-users',
             'name' => 'Usuarios',
@@ -26,6 +26,22 @@
             'active' => request()->routeIs('admin.users.*'),
         ],
     ];
+    if (auth()->user()->can('manageAreas')) {
+        $links[] = [
+            'icon' => 'fa-solid fa-map-marker-alt',
+            'name' => 'Áreas',
+            'route' => route('admin.areas.index'),
+            'active' => request()->routeIs('admin.areas.*'),
+        ];
+    }
+    if (auth()->user()->can('importUsers')) {
+        $links[] = [
+            'icon' => 'fa-solid fa-file-import',
+            'name' => 'Importar usuarios',
+            'route' => route('admin.users.import.index'),
+            'active' => request()->routeIs('admin.users.import.*'),
+        ];
+    }
     if (auth()->user()->can('viewReports')) {
         $links[] = [
             'icon' => 'fa-solid fa-file-excel',
@@ -34,6 +50,7 @@
             'active' => request()->routeIs('admin.reports.*'),
         ];
     }
+
 @endphp
 
 <aside id="logo-sidebar"

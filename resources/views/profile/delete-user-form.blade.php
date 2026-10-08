@@ -32,8 +32,7 @@
                                 autocomplete="current-password"
                                 placeholder="{{ __('Password') }}"
                                 x-ref="password"
-                                wire:model="password"
-                                wire:keydown.enter="deleteUser" />
+                                wire:model="password" />
 
                     <x-input-error for="password" class="mt-2" />
                 </div>
@@ -44,7 +43,7 @@
                     {{ __('Cancel') }}
                 </x-secondary-button>
 
-                <x-danger-button class="ms-3" wire:click="deleteUser" wire:loading.attr="disabled">
+                <x-danger-button class="ms-3" data-delete-label="tu cuenta" onclick="confirmLivewireDeletion(event, this, 'deleteUser')" wire:loading.attr="disabled">
                     {{ __('Delete Account') }}
                 </x-danger-button>
             </x-slot>

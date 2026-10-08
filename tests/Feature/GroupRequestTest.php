@@ -116,7 +116,7 @@ class GroupRequestTest extends TestCase
 
     public function test_only_supervisors_with_an_area_can_create_group_requests(): void
     {
-        foreach (['worker', 'area_manager', 'hr_manager', 'plant_manager', 'admin', 'supervisor'] as $role) {
+        foreach (['worker', 'area_manager', 'hr_manager', 'plant_manager', 'supervisor'] as $role) {
             $user = $this->user($role);
             Livewire::actingAs($user, 'web')->test(GroupRequestForm::class)->assertForbidden();
             $this->httpUser($user)->get(route('requests.group.create'))->assertForbidden();
@@ -285,7 +285,7 @@ class GroupRequestTest extends TestCase
     public function test_administration_can_assign_supervisor_role_and_employees(): void
     {
         [$supervisor, $first] = $this->team();
-        $admin = $this->user('admin');
+        $admin = $this->user('worker', ['area_id' => Area::firstOrCreate(['name' => 'Sistemas'])->id]);
         $newSupervisor = $this->user(attributes: ['area_id' => $supervisor->area_id]);
         Livewire::actingAs($admin, 'web')->test(UserEdit::class, ['user' => $newSupervisor])
             ->set('role', 'supervisor')->call('save')->assertHasNoErrors();

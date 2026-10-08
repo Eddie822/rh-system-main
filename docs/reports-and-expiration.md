@@ -2,7 +2,7 @@
 
 ## Reports
 
-Administrators and HR users (`admin`, `rh`, `hr_manager`) can open **Reportes** in the admin sidebar. Other roles cannot access the preview or download endpoint.
+All personnel assigned to Sistemas or Recursos Humanos (also named RH) can open **Reportes** in the admin sidebar, regardless of job role. Personnel in other areas cannot access the preview or download endpoint.
 
 - Only requests with final status `approved` are included, for both individual and grouped requests.
 - Filter by overtime day, ISO week/year (Monday–Sunday), or an inclusive date range. Area and employee payroll number are optional filters. The area list is read from the current `areas` database table on each Livewire render; the approvals inbox and user administration also read this table.

@@ -25,7 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('viewReports', fn (User $user) => in_array($user->role, ['admin', 'rh', 'hr_manager'], true));
+        foreach (['accessAdminPanel', 'viewReports', 'manageAreas', 'importUsers', 'deleteUsers'] as $ability) {
+            Gate::define($ability, fn (User $user) => $user->canAccessAdminPanel());
+        }
         Route::aliasMiddleware('admin', AdminMiddleware::class);
         Livewire::addPersistentMiddleware([
             AdminMiddleware::class,

@@ -1,5 +1,9 @@
 <div class="p-3 sm:p-4">
 
+    @if (session('error'))
+        <p role="alert" class="p-3 mb-4 text-red-800 rounded-lg bg-red-50">{{ session('error') }}</p>
+    @endif
+
     {{-- Filtros --}}
     <div class="flex flex-col gap-3 mb-4 sm:flex-row sm:flex-wrap">
         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Buscar por nombre o número de nómina..."
@@ -112,6 +116,14 @@
                                     </svg>
                                     Editar
                                 </a>
+                                @can('deleteUsers')
+                                    @if (! $user->is(auth()->user()))
+                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->last_name }}" onsubmit="confirmDeleteForm(event, this)">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">Eliminar</button>
+                                        </form>
+                                    @endif
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -171,6 +183,14 @@
                         </svg>
                         Editar
                     </a>
+                    @can('deleteUsers')
+                        @if (! $user->is(auth()->user()))
+                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->last_name }}" onsubmit="confirmDeleteForm(event, this)">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="w-full px-3 py-2 text-sm font-medium text-red-700 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">Eliminar</button>
+                            </form>
+                        @endif
+                    @endcan
                 </div>
             </div>
         @empty

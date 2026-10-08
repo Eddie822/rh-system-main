@@ -5,66 +5,105 @@ namespace App\Livewire\Admin;
 use App\Models\Area;
 use App\Models\Authorization;
 use App\Models\Request as RequestModel;
-use ArielMejiaDev\LarapexCharts\LarapexChart;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
+    public string $areaId = '';
+
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['areaId', 'dateFrom', 'dateTo'], true)) {
+            $this->dispatch('dashboard-data-updated', data: $this->dashboardData());
+        }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('areaId', 'dateFrom', 'dateTo');
+        $this->dispatch('dashboard-data-updated', data: $this->dashboardData());
+    }
+
     public function render()
     {
+        abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+
         return view('livewire.admin.dashboard', [
+            'areas' => Area::orderBy('name')->get(),
             'expiringSoon' => RequestModel::expiringSoon()->count(),
             'overdue' => RequestModel::overdue()->count(),
-            'indicators' => $this->getIndicators(),
-            'requestsByAreaChart' => $this->requestsByAreaChart(),
-            'areaManagerChart' => $this->authorizationChart('area_manager', 'Gerentes de Área'),
-            'hrManagerChart' => $this->authorizationChart('hr_manager', 'Gerentes de RH'),
-            'plantManagerChart' => $this->authorizationChart('plant_manager', 'Gerentes de Planta'),
+            'dashboardData' => $this->dashboardData(),
+            'invalidDateRange' => $this->dateFrom !== '' && $this->dateTo !== '' && $this->dateFrom > $this->dateTo,
         ]);
     }
 
-    protected function getIndicators(): array
+    private function filteredRequests(Builder $query): Builder
     {
-        return [
-            'approved' => RequestModel::where('status', 'approved')->count(),
-            'rejected' => RequestModel::where('status', 'rejected')->count(),
-            'pending_area_manager' => RequestModel::where('status', 'pending_area_manager')->count(),
-            'pending_hr_manager' => RequestModel::where('status', 'pending_hr_manager')->count(),
-            'pending_plant_manager' => RequestModel::where('status', 'pending_plant_manager')->count(),
-        ];
+        return $query
+            ->when($this->areaId !== '' && ctype_digit($this->areaId), fn (Builder $query) => $query->where('area_id', (int) $this->areaId))
+            ->when($this->validDate($this->dateFrom), fn (Builder $query) => $query->whereDate('created_at', '>=', $this->dateFrom))
+            ->when($this->validDate($this->dateTo), fn (Builder $query) => $query->whereDate('created_at', '<=', $this->dateTo));
     }
 
-    protected function requestsByAreaChart(): LarapexChart
+    private function validDate(string $date): bool
     {
-        $data = Area::withCount('requests')
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return false;
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $date));
+
+        return checkdate($month, $day, $year);
+    }
+
+    private function dashboardData(): array
+    {
+        $counts = $this->filteredRequests(RequestModel::query())
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $areas = Area::query()
+            ->when($this->areaId !== '' && ctype_digit($this->areaId), fn (Builder $query) => $query->whereKey((int) $this->areaId))
+            ->withCount(['requests' => fn (Builder $query) => $this->filteredRequests($query)])
             ->orderByDesc('requests_count')
+            ->orderBy('name')
             ->get();
 
-        return (new LarapexChart)
-            ->barChart()
-            ->setHeight(320)
-            ->setColors(['#3b82f6'])
-            ->addData($data->pluck('requests_count')->toArray(), 'Solicitudes')
-            ->setXAxis($data->pluck('name')->toArray())
-            ->setLabels(['name']);
-    }
+        $authorizations = Authorization::query()
+            ->selectRaw('authorization_role, action, COUNT(*) as total')
+            ->whereIn('authorization_role', ['area_manager', 'hr_manager', 'plant_manager'])
+            ->whereIn('action', ['approved', 'rejected'])
+            ->whereHas('request', fn (Builder $query) => $this->filteredRequests($query))
+            ->groupBy('authorization_role', 'action')
+            ->get();
 
-    protected function authorizationChart(string $role, string $label): LarapexChart
-    {
-        $approved = Authorization::where('authorization_role', $role)
-            ->where('action', 'approved')
-            ->count();
+        $decisions = [];
+        foreach (['area_manager', 'hr_manager', 'plant_manager'] as $role) {
+            $decisions[$role] = [
+                'approved' => (int) ($authorizations->first(fn ($row) => $row->authorization_role === $role && $row->action === 'approved')?->total ?? 0),
+                'rejected' => (int) ($authorizations->first(fn ($row) => $row->authorization_role === $role && $row->action === 'rejected')?->total ?? 0),
+            ];
+        }
 
-        $rejected = Authorization::where('authorization_role', $role)
-            ->where('action', 'rejected')
-            ->count();
-
-        return (new LarapexChart)
-            ->donutChart()
-            ->setHeight(280)
-            ->setTitle($label)
-            ->setColors(['#22c55e', '#ef4444'])
-            ->addData([$approved, $rejected])
-            ->setLabels(['Aceptadas', 'Rechazadas']);
+        return [
+            'indicators' => [
+                'approved' => (int) ($counts['approved'] ?? 0),
+                'rejected' => (int) ($counts['rejected'] ?? 0),
+                'pending_area_manager' => (int) ($counts['pending_area_manager'] ?? 0),
+                'pending_hr_manager' => (int) ($counts['pending_hr_manager'] ?? 0),
+                'pending_plant_manager' => (int) ($counts['pending_plant_manager'] ?? 0),
+            ],
+            'areas' => [
+                'labels' => $areas->pluck('name')->all(),
+                'values' => $areas->pluck('requests_count')->map(fn ($count) => (int) $count)->all(),
+            ],
+            'decisions' => $decisions,
+        ];
     }
 }

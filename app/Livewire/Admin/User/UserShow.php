@@ -22,6 +22,8 @@ class UserShow extends Component
 
     public function render()
     {
+        abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+
         $days = fn ($query) => $query->where(fn ($query) => $query
             ->whereNull('employee_id')->orWhere('employee_id', $this->user->id)
             ->orWhereHas('request', fn ($query) => $query->where('employee_id', $this->user->id)));
@@ -39,7 +41,6 @@ class UserShow extends Component
                 'area_manager' => 'Gerente de Área',
                 'hr_manager' => 'Gerente de RH',
                 'plant_manager' => 'Gerente de Planta',
-                'admin' => 'Administrador',
             ],
             'statusLabels' => [
                 'pending_area_manager' => 'Pendiente - Gerente de Área',

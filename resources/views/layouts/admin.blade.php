@@ -52,6 +52,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('layouts.partials.confirm-delete')
 
     @livewireScripts
 
@@ -75,54 +76,6 @@
             }
         }
     </script>
-    <script>
-        // Parchea ApexCharts para capturar cada instancia creada
-        (function() {
-            window.__apexInstances = window.__apexInstances || [];
-            const OriginalApexCharts = window.ApexCharts;
-
-            if (OriginalApexCharts && !OriginalApexCharts.__patched) {
-                window.ApexCharts = function(...args) {
-                    const instance = new OriginalApexCharts(...args);
-                    window.__apexInstances.push(instance);
-                    return instance;
-                };
-                window.ApexCharts.prototype = OriginalApexCharts.prototype;
-                window.ApexCharts.__patched = true;
-            }
-        })();
-
-        function isDarkMode() {
-            return document.documentElement.classList.contains('dark');
-        }
-
-        function applyChartTheme() {
-            const dark = isDarkMode();
-            (window.__apexInstances || []).forEach(chart => {
-                chart.updateOptions({
-                    theme: {
-                        mode: dark ? 'dark' : 'light'
-                    },
-                    chart: {
-                        foreColor: dark ? '#e5e7eb' : '#374151'
-                    },
-                    grid: {
-                        borderColor: dark ? '#374151' : '#e5e7eb'
-                    },
-                }, false, false);
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(applyChartTheme, 200);
-
-            new MutationObserver(applyChartTheme).observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['class'],
-            });
-        });
-    </script>
-
     @stack('scripts')
 </body>
 

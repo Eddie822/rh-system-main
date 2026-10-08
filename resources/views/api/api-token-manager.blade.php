@@ -161,7 +161,7 @@
                 {{ __('Cancel') }}
             </x-secondary-button>
 
-            <x-danger-button class="ms-3" wire:click="deleteApiToken" wire:loading.attr="disabled">
+            <x-danger-button class="ms-3" data-delete-label="este token de API" onclick="confirmLivewireDeletion(event, this, 'deleteApiToken')" wire:loading.attr="disabled">
                 {{ __('Delete') }}
             </x-danger-button>
         </x-slot>

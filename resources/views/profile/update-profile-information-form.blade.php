@@ -43,7 +43,7 @@
                 </x-secondary-button>
 
                 @if ($this->user->profile_photo_path)
-                    <x-secondary-button type="button" class="mt-2" wire:click="deleteProfilePhoto">
+                    <x-secondary-button type="button" class="mt-2" data-delete-label="la foto de perfil" onclick="confirmLivewireDeletion(event, this, 'deleteProfilePhoto')">
                         {{ __('Remove Photo') }}
                     </x-secondary-button>
                 @endif
@@ -100,5 +100,4 @@
         </x-button> --}}
     </x-slot>
 </x-form-section>
-
 

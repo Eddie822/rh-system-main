@@ -2,7 +2,7 @@
 
 ## Setup
 
-Apply the additive migration with `./vendor/bin/sail artisan migrate`.
+Apply the additive migration with `sail artisan migrate`.
 Existing individual requests remain individual requests; no data conversion is required.
 
 In **Administración → Usuarios → Editar**:
@@ -33,5 +33,5 @@ Supervisors can create group requests from **Solicitudes** or **Mis solicitudes 
 
 ## Verification
 
-Run `./vendor/bin/sail php vendor/bin/phpunit tests/Feature/GroupRequestTest.php`.
+Run `sail php vendor/bin/phpunit tests/Feature/GroupRequestTest.php`.
 These tests explicitly use SQLite in memory and do not modify the application's database. They cover assignment restrictions, privacy, validation, group editing, approval sequencing, whole-group rejection, stale decisions, transaction rollback, and individual-request compatibility.

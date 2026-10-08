@@ -62,6 +62,10 @@
                     {{ $user->areaManager ? $user->areaManager->name . ' ' . $user->areaManager->last_name : '—' }}
                 </dd>
             </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Jefe directo</dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->directManager ? $user->directManager->name . ' ' . $user->directManager->last_name : ($user->role === 'plant_manager' ? 'No aplica' : 'Sin asignar') }}</dd>
+            </div>
         </dl>
         @if ($user->role === 'worker')
             <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">Supervisor: {{ $user->supervisor?->name ?? 'Sin asignar' }} {{ $user->supervisor?->last_name }}</p>

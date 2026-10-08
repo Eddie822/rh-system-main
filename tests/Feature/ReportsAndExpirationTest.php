@@ -88,14 +88,14 @@ class ReportsAndExpirationTest extends TestCase
         return $this->actingAs($user, 'web');
     }
 
-    public function test_report_module_and_export_are_restricted_to_hr_and_admin(): void
+    public function test_report_module_and_export_are_restricted_by_area(): void
     {
         foreach (['worker', 'supervisor', 'area_manager', 'plant_manager', 'it'] as $role) {
             $this->httpUser($this->user($role))->get(route('admin.reports.index'))->assertForbidden();
             $this->get(route('admin.reports.export'))->assertForbidden();
         }
-        foreach (['admin', 'rh', 'hr_manager'] as $role) {
-            $this->httpUser($this->user($role))->get(route('admin.reports.index'))->assertOk()->assertSee('Reportes');
+        foreach (['worker', 'supervisor', 'area_manager', 'hr_manager', 'plant_manager'] as $role) {
+            $this->httpUser($this->user($role, ['area_id' => Area::firstOrCreate(['name' => 'RH'])->id]))->get(route('admin.reports.index'))->assertOk()->assertSee('Reportes');
             $response = $this->get(route('admin.reports.export'));
             $response->assertOk()->assertDownload();
             @unlink($response->baseResponse->getFile()->getPathname());
@@ -116,7 +116,7 @@ class ReportsAndExpirationTest extends TestCase
         $this->assertCount(2, $weekly->query()->get());
         $range = new ApprovedOvertimeReport(['period' => 'range', 'from' => '2030-01-08', 'to' => '2030-01-14']);
         $this->assertCount(2, $range->query()->get());
-        Livewire::actingAs($this->user('rh'), 'web')->test(ApprovedOvertime::class)
+        Livewire::actingAs($this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]), 'web')->test(ApprovedOvertime::class)
             ->set('year', '2030')->set('week', '2')
             ->assertViewHas('hours', 5.5)->assertViewHas('requestCount', 1);
     }
@@ -145,7 +145,7 @@ class ReportsAndExpirationTest extends TestCase
 
     public function test_area_options_come_from_database_across_report_approvals_and_user_admin(): void
     {
-        $reportUser = $this->user('hr_manager');
+        $reportUser = $this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]);
         $preview = Livewire::actingAs($reportUser, 'web')->test(ApprovedOvertime::class);
         $newArea = Area::create(['name' => 'Ensamble']);
         $preview->call('clearFilters')->assertSee('Ensamble');
@@ -167,7 +167,7 @@ class ReportsAndExpirationTest extends TestCase
     {
         $first = $this->request(date: '2030-01-07');
         $this->request(date: '2030-01-08');
-        $component = Livewire::actingAs($this->user('rh'), 'web')->test(ApprovedOvertime::class)
+        $component = Livewire::actingAs($this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]), 'web')->test(ApprovedOvertime::class)
             ->set('period', 'day')->set('date', '2030-01-07')
             ->assertViewHas('hours', 2.5)->assertViewHas('requestCount', 1)
             ->assertViewHas('rows', fn ($rows) => $rows->first()->request_id === $first->id);
@@ -178,7 +178,7 @@ class ReportsAndExpirationTest extends TestCase
 
     public function test_live_filters_show_errors_and_excel_endpoint_validates_them(): void
     {
-        $hr = $this->user('hr_manager');
+        $hr = $this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]);
         Livewire::actingAs($hr, 'web')->test(ApprovedOvertime::class)
             ->set('year', '2030')->set('week', '53')->assertViewHas('exportUrl', null)
             ->assertSee('La semana seleccionada no existe');
@@ -228,7 +228,7 @@ class ReportsAndExpirationTest extends TestCase
             $request->days()->create(['day_date' => '2030-01-07', 'hours' => 1]);
         }
         $filters = ['period' => 'day', 'date' => '2030-01-07'];
-        Livewire::actingAs($this->user('rh'), 'web')->test(ApprovedOvertime::class)
+        Livewire::actingAs($this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]), 'web')->test(ApprovedOvertime::class)
             ->set('period', 'day')->set('date', '2030-01-07')
             ->assertViewHas('rows', fn ($rows) => $rows->count() === 25 && $rows->total() === 31);
         $file = tempnam(sys_get_temp_dir(), 'report-all-');

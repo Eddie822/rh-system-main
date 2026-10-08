@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
@@ -41,6 +42,7 @@ class User extends Authenticatable
         'group',
         'area_manager_id',
         'supervisor_id',
+        'direct_manager_id',
     ];
 
     /**
@@ -77,6 +79,13 @@ class User extends Authenticatable
         ];
     }
 
+    public function canAccessAdminPanel(): bool
+    {
+        $areaName = Str::lower(Str::ascii(trim($this->area?->name ?? '')));
+
+        return in_array($areaName, ['sistemas', 'rh', 'recursos humanos'], true);
+    }
+
     public function canApprove(): bool
     {
         return in_array($this->role, [
@@ -104,6 +113,11 @@ class User extends Authenticatable
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    public function directManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'direct_manager_id');
     }
 
     public function requests(): HasMany

@@ -25,6 +25,10 @@ class DatabaseSeeder extends Seeder
             // Only new accounts receive the demo password; existing passwords are preserved.
             $saveUser = function (string $number, array $attributes) use ($password): User {
                 $user = User::firstOrNew(['employee_number' => $number]);
+                // Preserve the confirmed job assignments when reseeding existing accounts.
+                if ($user->exists && in_array($number, ['0356', '0094', '0103'], true)) {
+                    return $user;
+                }
                 if (! $user->exists) {
                     $user->password = $password;
                     $user->must_change_password = true;
@@ -49,7 +53,7 @@ class DatabaseSeeder extends Seeder
 
             $managers = collect();
             $supervisors = collect();
-            foreach (['Producción' => '0101', 'Finanzas' => '0003', 'Sistemas' => '0103'] as $areaName => $number) {
+            foreach (['Producción' => '0101', 'Finanzas' => '0003', 'Sistemas' => '0356'] as $areaName => $number) {
                 $area = $areas[$areaName];
                 $manager = $saveUser($number, [
                     'name' => $faker->firstName(), 'last_name' => $faker->lastName().' '.$faker->lastName(),

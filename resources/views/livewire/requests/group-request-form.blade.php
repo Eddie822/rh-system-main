@@ -38,7 +38,7 @@
                         </select>
                     </div>
                     @if (count($employees) > 1)
-                        <button type="button" wire:click="removeEmployee({{ $index }})" class="px-3 py-2 text-red-600">Quitar empleado</button>
+                        <button type="button" data-delete-action="Quitar" data-delete-label="este empleado" onclick="confirmLivewireDeletion(event, this, 'removeEmployee', {{ $index }})" class="px-3 py-2 text-red-600">Quitar empleado</button>
                     @endif
                 </div>
 
@@ -53,7 +53,7 @@
                             <x-input id="hours-{{ $index }}-{{ $dayIndex }}" type="number" min="0.01" max="12" step="0.01" wire:model="employees.{{ $index }}.days.{{ $dayIndex }}.hours" class="w-full mt-1" />
                         </div>
                         @if (count($employee['days']) > 1)
-                            <button type="button" wire:click="removeDay({{ $index }}, {{ $dayIndex }})" class="px-3 py-2 text-red-600">Quitar fecha</button>
+                            <button type="button" data-delete-action="Quitar" data-delete-label="esta fecha" onclick="confirmLivewireDeletion(event, this, 'removeDay', {{ $index }}, {{ $dayIndex }})" class="px-3 py-2 text-red-600">Quitar fecha</button>
                         @endif
                     </div>
                 @endforeach

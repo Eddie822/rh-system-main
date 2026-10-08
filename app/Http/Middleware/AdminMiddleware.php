@@ -15,12 +15,7 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-         if (!auth()->check() || auth()->user()->role !== 'admin' 
-         && auth()->user()->role !== 'rh' 
-         && auth()->user()->role !== 'hr_manager' 
-         && auth()->user()->role !== 'it') {
-            abort(403, 'Acceso denegado.');
-        }
+        abort_unless($request->user()?->canAccessAdminPanel(), 403, 'Acceso denegado.');
 
         return $next($request);
     }
