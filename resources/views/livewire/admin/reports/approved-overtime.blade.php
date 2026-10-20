@@ -1,17 +1,17 @@
-<div class="space-y-6 text-gray-900 dark:text-gray-100">
+<div class="space-y-6 text-gray-900 dark:text-gray-200">
     <div>
-        <h1 class="text-2xl font-semibold">Reportes</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Solicitudes aprobadas por fecha de horas extra. Los resultados se actualizan al cambiar filtros.</p>
+        <h1 class="text-2xl font-semibold dark:text-zinc-600">Reportes</h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-800">Solicitudes aprobadas por fecha de horas extra. Los resultados se actualizan al cambiar filtros.</p>
     </div>
-    <div class="p-5 space-y-4 bg-white rounded-lg shadow dark:bg-gray-800">
+    <div class="p-5 space-y-4 bg-white rounded-lg shadow dark:bg-gray-200">
         @if ($filterErrors)
-            <div role="alert" class="p-3 text-red-700 bg-red-50 rounded-lg">
+            <div role="alert" class="p-3 text-red-700 rounded-lg bg-red-50">
                 @foreach ($filterErrors as $error) <p>{{ $error }}</p> @endforeach
             </div>
         @endif
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-                <x-label for="period" value="Periodo" />
+                <x-label for="period" value="Periodo" class="dark:text-zinc-600" />
                 <select id="period" wire:model.live="period" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900">
                     <option value="day">Día</option><option value="week">Semana</option><option value="range">Rango de fechas</option>
                 </select>
@@ -50,7 +50,7 @@
                 </select>
             </div>
             <div>
-                <x-label for="employee_number" value="Nómina del empleado" />
+                <x-label for="employee_number" value="Nómina del empleado" class="dark:text-zinc-600" />
                 <x-input id="employee_number" wire:model.live.debounce.400ms="employee_number" placeholder="Todas" class="w-full mt-1" />
             </div>
         </div>
