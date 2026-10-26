@@ -39,15 +39,24 @@ class UserImportController extends Controller
     {
         Gate::authorize('importUsers');
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx', 'max:5120']]);
-        $result = $importer->import($request->file('file'));
-        $imported = count($result['credentials']);
-        $skipped = count($result['skipped']);
-        $summary = "{$imported} usuarios importados; {$skipped} nóminas duplicadas omitidas.";
-        if ($imported === 0) {
-            return redirect()->route('admin.users.import.index')->with('success', $summary);
-        }
-        session()->flash('success', $summary.' El archivo de contraseñas se descarga una sola vez.');
+        // Hashing thousands of distinct passwords can exceed PHP's normal request limit.
+        // Keep this exception scoped to the authorized, size-limited import and its Excel.
+        $executionLimit = (int) ini_get('max_execution_time');
+        set_time_limit(0);
 
-        return Excel::download(new UserCredentialsExport($result['credentials']), 'credenciales-temporales-'.now()->format('Ymd-His').'.xlsx');
+        try {
+            $result = $importer->import($request->file('file'));
+            $imported = count($result['credentials']);
+            $skipped = count($result['skipped']);
+            $summary = "{$imported} usuarios importados; {$skipped} nóminas duplicadas omitidas.";
+            if ($imported === 0) {
+                return redirect()->route('admin.users.import.index')->with('success', $summary);
+            }
+            session()->flash('success', $summary.' El archivo de contraseñas se descarga una sola vez.');
+
+            return Excel::download(new UserCredentialsExport($result['credentials']), 'credenciales-temporales-'.now()->format('Ymd-His').'.xlsx');
+        } finally {
+            set_time_limit($executionLimit);
+        }
     }
 }

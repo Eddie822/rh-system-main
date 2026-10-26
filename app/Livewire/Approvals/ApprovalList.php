@@ -78,11 +78,13 @@ class ApprovalList extends Component
                 $query->whereHas('employee', function ($q) {
 
                     $q->where('name', 'like', "%{$this->search}%")
-                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('apellidos_pat', 'like', "%{$this->search}%")
+                        ->orWhere('apellido_mat', 'like', "%{$this->search}%")
                         ->orWhere('employee_number', 'like', "%{$this->search}%");
                 })->orWhereHas('participants', function ($q) {
                     $q->where('name', 'like', "%{$this->search}%")
-                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('apellidos_pat', 'like', "%{$this->search}%")
+                        ->orWhere('apellido_mat', 'like', "%{$this->search}%")
                         ->orWhere('employee_number', 'like', "%{$this->search}%");
                 });
             });

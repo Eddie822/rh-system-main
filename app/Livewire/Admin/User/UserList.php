@@ -67,7 +67,8 @@ class UserList extends Component
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%'.$this->search.'%')
-                        ->orWhere('last_name', 'like', '%'.$this->search.'%')
+                        ->orWhere('apellidos_pat', 'like', '%'.$this->search.'%')
+                        ->orWhere('apellido_mat', 'like', '%'.$this->search.'%')
                         ->orWhere('employee_number', 'like', '%'.$this->search.'%');
                 });
             })

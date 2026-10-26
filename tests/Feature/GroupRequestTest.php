@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -35,6 +36,21 @@ class GroupRequestTest extends TestCase
         return $app;
     }
 
+    public function test_supervisor_can_search_by_name_or_payroll_and_select_an_employee(): void
+    {
+        $supervisor = $this->user('supervisor', ['area_id' => Area::create(['name' => 'Búsqueda'])->id]);
+        $worker = $this->user('worker', ['name' => 'Lucia', 'apellidos_pat' => 'Perez', 'employee_number' => 'BUSCA-001']);
+        $form = Livewire::actingAs($supervisor)->test(GroupRequestForm::class)
+            ->set('employeeSearch.0', 'Lucia Perez')
+            ->assertSee('BUSCA-001')
+            ->call('selectEmployee', 0, 'BUSCA-001')
+            ->assertSet('employees.0.employee_number', 'BUSCA-001')
+            ->set('employeeSearch.0', 'BUSCA-001')
+            ->assertSet('employees.0.employee_number', '')
+            ->assertSee('Lucia');
+        $form->set('employeeSearch.0', 'Sin coincidencias')->assertSee('No se encontraron empleados.');
+    }
+
     private function user(string $role = 'worker', array $attributes = []): User
     {
         static $number = 1000;
@@ -42,7 +58,7 @@ class GroupRequestTest extends TestCase
         return User::create(array_merge([
             'employee_number' => (string) ++$number,
             'name' => 'Employee '.$number,
-            'last_name' => 'Test',
+            'apellidos_pat' => 'Test',
             'password' => 'password123',
             'role' => $role,
             'must_change_password' => false,
@@ -66,8 +82,8 @@ class GroupRequestTest extends TestCase
     {
         $area = Area::create(['name' => 'Production']);
         $supervisor = $this->user('supervisor', ['area_id' => $area->id]);
-        $first = $this->user(attributes: ['area_id' => $area->id, 'supervisor_id' => $supervisor->id]);
-        $second = $this->user(attributes: ['area_id' => $area->id, 'supervisor_id' => $supervisor->id]);
+        $first = $this->user(attributes: ['area_id' => $area->id]);
+        $second = $this->user(attributes: ['area_id' => $area->id]);
 
         return [$supervisor, $first, $second];
     }
@@ -123,12 +139,21 @@ class GroupRequestTest extends TestCase
         }
     }
 
-    public function test_supervisor_cannot_submit_unassigned_employees_even_in_same_area(): void
+    public function test_supervisors_can_request_unassigned_workers_from_any_area(): void
     {
         [$supervisor, $first, $second] = $this->team();
-        $second->update(['supervisor_id' => null]);
-        $this->submit($supervisor, $this->entries($first, $second))->assertHasErrors(['employees.1.employee_number']);
-        $this->assertDatabaseCount('requests', 0);
+        $otherArea = Area::create(['name' => 'Almacén']);
+        $second->update(['area_id' => $otherArea->id]);
+        $this->submit($supervisor, $this->entries($first, $second))->assertHasNoErrors();
+        $request = Request::firstOrFail();
+        $this->assertSame($supervisor->area_id, $request->area_id);
+        $this->assertTrue($request->participants->contains($second));
+        $this->assertNull($second->fresh()->direct_manager_id);
+        $otherSupervisor = $this->user('supervisor', ['area_id' => $otherArea->id]);
+        $this->submit($otherSupervisor, $this->entries($first, $second))->assertHasNoErrors();
+        $this->assertSame(2, $second->groupRequests()->count());
+        $otherManager = $this->user('area_manager', ['area_id' => $otherArea->id]);
+        $this->assertFalse($otherManager->can('approve', $request));
     }
 
     public function test_validation_rejects_duplicate_employees_dates_and_invalid_hours(): void
@@ -244,12 +269,12 @@ class GroupRequestTest extends TestCase
         $this->assertSame('Overtime coverage', $request->fresh()->reason);
     }
 
-    public function test_role_revocation_and_assignment_changes_are_checked_at_save(): void
+    public function test_role_revocation_is_checked_for_employees_and_supervisors_at_save(): void
     {
         [$supervisor, $first, $second] = $this->team();
         $form = Livewire::actingAs($supervisor, 'web')->test(GroupRequestForm::class)
             ->set('group', 'A')->set('reason', 'Coverage')->set('employees', $this->entries($first, $second));
-        $second->update(['supervisor_id' => null]);
+        $second->update(['role' => 'supervisor']);
         $form->call('save')->assertHasErrors(['employees.1.employee_number']);
         $supervisor->update(['role' => 'worker']);
         $form->call('save')->assertForbidden();
@@ -282,18 +307,16 @@ class GroupRequestTest extends TestCase
         }
     }
 
-    public function test_administration_can_assign_supervisor_role_and_employees(): void
+    public function test_administration_can_assign_supervisor_role_without_linking_employees(): void
     {
         [$supervisor, $first] = $this->team();
         $admin = $this->user('worker', ['area_id' => Area::firstOrCreate(['name' => 'Sistemas'])->id]);
         $newSupervisor = $this->user(attributes: ['area_id' => $supervisor->area_id]);
         Livewire::actingAs($admin, 'web')->test(UserEdit::class, ['user' => $newSupervisor])
             ->set('role', 'supervisor')->call('save')->assertHasNoErrors();
-        Livewire::actingAs($admin, 'web')->test(UserEdit::class, ['user' => $first])
-            ->set('supervisor_id', $newSupervisor->id)->call('save')->assertHasNoErrors();
-        $this->assertSame($newSupervisor->id, $first->fresh()->supervisor_id);
-        Livewire::actingAs($admin, 'web')->test(UserEdit::class, ['user' => $first])
-            ->set('supervisor_id', $admin->id)->call('save')->assertHasErrors(['supervisor_id']);
+        $this->assertSame('supervisor', $newSupervisor->fresh()->role);
+        $this->assertNull($first->fresh()->direct_manager_id);
+        $this->assertFalse(Schema::hasColumn('users', 'supervisor_id'));
     }
 
     public function test_individual_requests_keep_their_tracking_and_reject_stale_edits(): void

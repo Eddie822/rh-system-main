@@ -23,6 +23,6 @@ class ReportController extends Controller
         $report = new ApprovedOvertimeReport($request->validated());
         [$from, $to] = $report->dates();
 
-        return Excel::download(new ApprovedOvertimeExport($report), "horas-aprobadas-{$from}-{$to}.xlsx");
+        return Excel::download(new ApprovedOvertimeExport($report), "solicitudes-horas-extra-{$from}-{$to}.xlsx");
     }
 }

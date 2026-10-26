@@ -14,7 +14,9 @@ class UserEdit extends Component
 
     public string $name = '';
 
-    public string $last_name = '';
+    public string $apellidos_pat = '';
+
+    public ?string $apellido_mat = null;
 
     public string $employee_number = '';
 
@@ -28,13 +30,11 @@ class UserEdit extends Component
 
     public ?int $area_manager_id = null;
 
-    public ?int $supervisor_id = null;
-
     public ?int $direct_manager_id = null;
 
     public string $direct_manager_number = '';
 
-    public ?string $group = null;
+    public ?string $puesto = null;
 
     public bool $showSuccess = false;
 
@@ -42,22 +42,23 @@ class UserEdit extends Component
     {
         $this->user = $user;
         $this->name = $user->name;
-        $this->last_name = $user->last_name;
+        $this->apellidos_pat = $user->apellidos_pat;
+        $this->apellido_mat = $user->apellido_mat;
         $this->employee_number = $user->employee_number;
         $this->role = $user->role;
         $this->area_id = $user->area_id;
         $this->area_manager_id = $user->area_manager_id;
-        $this->supervisor_id = $user->supervisor_id;
         $this->direct_manager_id = $user->direct_manager_id ?? ($user->role === 'supervisor' ? $user->area_manager_id : null);
         $this->direct_manager_number = User::find($this->direct_manager_id)?->employee_number ?? '';
-        $this->group = $user->group;
+        $this->puesto = $user->puesto;
     }
 
     protected function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'apellidos_pat' => ['required', 'string', 'max:255'],
+            'apellido_mat' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'employee_number' => [
                 'required',
@@ -66,7 +67,6 @@ class UserEdit extends Component
                 Rule::unique('users', 'employee_number')->ignore($this->user->id),
             ],
             'role' => ['required', Rule::in(['worker', 'supervisor', 'area_manager', 'hr_manager', 'plant_manager'])],
-            'supervisor_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'supervisor'), Rule::notIn([$this->user->id])],
             'area_id' => ['nullable', 'exists:areas,id'],
             'area_manager_id' => [
                 'nullable',
@@ -75,7 +75,7 @@ class UserEdit extends Component
             ],
             'direct_manager_id' => ['nullable', 'exists:users,id', Rule::notIn([$this->user->id])],
             'direct_manager_number' => ['nullable', 'string', 'max:50', 'exists:users,employee_number', Rule::notIn([$this->employee_number])],
-            'group' => ['nullable', 'string', 'max:255'],
+            'puesto' => ['nullable', 'string', 'max:255'],
 
         ];
     }
@@ -87,7 +87,7 @@ class UserEdit extends Component
             'direct_manager_number.not_in' => 'El usuario no puede ser su propio jefe.',
             'direct_manager_number.max' => 'La nómina del jefe directo admite máximo 50 caracteres.',
             'name.required' => 'El nombre es obligatorio.',
-            'last_name.required' => 'El apellido es obligatorio.',
+            'apellidos_pat.required' => 'El apellido es obligatorio.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.confirmed' => 'La confirmación de la contraseña no coincide.',
             'employee_number.required' => 'El número de nómina es obligatorio.',
@@ -98,12 +98,6 @@ class UserEdit extends Component
         ];
     }
 
-    public function updatedSupervisorId($value): void
-    {
-        $this->direct_manager_id = $value ?: null;
-        $this->direct_manager_number = User::find($this->direct_manager_id)?->employee_number ?? '';
-    }
-
     public function updated($propertyName)
     {
         $this->validateOnly($propertyName);
@@ -112,7 +106,8 @@ class UserEdit extends Component
     public function save()
     {
         abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
-        $this->direct_manager_number = trim($this->direct_manager_number);
+        $this->direct_manager_number = $this->role === 'worker' ? '' : trim($this->direct_manager_number);
+        $this->apellido_mat = trim($this->apellido_mat ?? '') ?: null;
         $this->validateOnly('direct_manager_number');
         $this->direct_manager_id = $this->direct_manager_number === '' ? null
             : User::where('employee_number', $this->direct_manager_number)->value('id');
@@ -132,34 +127,28 @@ class UserEdit extends Component
             unset($validated['password']);
         }
         unset($validated['password_confirmation']);
-        if ($validated['role'] !== 'worker') {
-            $validated['supervisor_id'] = null;
-        }
-        if (! in_array($validated['role'], ['worker', 'supervisor'], true)) {
+        if ($validated['role'] !== 'supervisor') {
             $validated['area_manager_id'] = null;
         }
 
         $expectedBossRole = match ($validated['role']) {
-            'worker' => ['supervisor', 'area_manager'],
+            'worker' => null,
             'supervisor' => ['area_manager'],
             'plant_manager' => null,
             default => ['plant_manager'],
         };
         if ($expectedBossRole === null) {
             $validated['direct_manager_id'] = null;
+            $validated['area_manager_id'] = null;
         } else {
             $bossId = $validated['direct_manager_id'];
             if ($bossId) {
                 $boss = User::findOrFail($bossId);
-                if (! in_array($boss->role, $expectedBossRole, true) || (in_array($validated['role'], ['worker', 'supervisor'], true) && $boss->area_id !== $validated['area_id'])) {
+                if (! in_array($boss->role, $expectedBossRole, true) || ($validated['role'] === 'supervisor' && $boss->area_id !== $validated['area_id'])) {
                     throw ValidationException::withMessages(['direct_manager_number' => 'El jefe directo debe tener el rol correcto y pertenecer a la misma área.']);
                 }
             }
             $validated['direct_manager_id'] = $bossId;
-            if ($validated['role'] === 'worker' && $bossId) {
-                $validated['supervisor_id'] = $boss->role === 'supervisor' ? $bossId : null;
-                $validated['area_manager_id'] = User::where('role', 'area_manager')->where('area_id', $validated['area_id'])->value('id');
-            }
             if ($validated['role'] === 'supervisor') {
                 $validated['area_manager_id'] = $bossId;
             }
@@ -180,14 +169,13 @@ class UserEdit extends Component
 
         return view('livewire.admin.user.user-edit', [
             'areas' => Area::orderBy('name')->get(),
-            'supervisors' => User::where('role', 'supervisor')->whereKeyNot($this->user->id)->orderBy('name')->get(),
             'areaManagers' => User::where('id', '!=', $this->user->id)
                 ->where('role', 'area_manager')
                 ->orderBy('name')
                 ->get(),
             'directManagers' => User::where('id', '!=', $this->user->id)
                 ->whereIn('role', match ($this->role) {
-                    'worker' => ['supervisor', 'area_manager'],
+                    'worker' => [],
                     'supervisor' => ['area_manager'],
                     default => ['plant_manager'],
                 })->orderBy('name')->get(),

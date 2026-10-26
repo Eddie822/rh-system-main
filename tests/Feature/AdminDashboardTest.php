@@ -30,7 +30,7 @@ class AdminDashboardTest extends TestCase
         return User::create([
             'employee_number' => $number,
             'name' => 'Usuario',
-            'last_name' => $number,
+            'apellidos_pat' => $number,
             'role' => $role,
             'area_id' => $role === 'supervisor' ? Area::firstOrCreate(['name' => 'Sistemas'])->id : null,
             'password' => 'password123',

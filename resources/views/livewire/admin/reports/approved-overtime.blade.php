@@ -1,7 +1,7 @@
 <div class="space-y-6 text-gray-900 dark:text-gray-200">
     <div>
         <h1 class="text-2xl font-semibold dark:text-zinc-600">Reportes</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-800">Solicitudes aprobadas por fecha de horas extra. Los resultados se actualizan al cambiar filtros.</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-800">Todas las solicitudes por fecha de horas extra, incluidas pendientes y rechazadas. Los resultados se actualizan al cambiar filtros.</p>
     </div>
     <div class="p-5 space-y-4 bg-white rounded-lg shadow dark:bg-gray-200">
         @if ($filterErrors)
@@ -67,13 +67,13 @@
         @if ($dates)
         <div class="grid gap-4 sm:grid-cols-3">
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800"><p class="text-sm">Periodo consultado</p><p class="font-semibold">{{ $dates[0] }} — {{ $dates[1] }}</p></div>
-            <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800"><p class="text-sm">Solicitudes aprobadas</p><p class="text-2xl font-semibold">{{ $requestCount }}</p></div>
+            <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800"><p class="text-sm">Solicitudes</p><p class="text-2xl font-semibold">{{ $requestCount }}</p></div>
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800"><p class="text-sm">Horas extra</p><p class="text-2xl font-semibold">{{ number_format($hours, 2) }}</p></div>
         </div>
         <div class="overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
             <table class="w-full text-sm text-left">
                 <thead class="bg-gray-100 dark:bg-gray-700"><tr>
-                    @foreach (['Solicitud', 'Tipo', 'Nómina', 'Empleado', 'Área', 'Grupo', 'Fecha', 'Horas'] as $heading)
+                    @foreach (['Solicitud', 'Tipo', 'Nómina', 'Empleado', 'Área', 'Grupo', 'Fecha', 'Horas', 'Estado'] as $heading)
                         <th class="px-4 py-3">{{ $heading }}</th>
                     @endforeach
                 </tr></thead>
@@ -84,20 +84,20 @@
                             <td class="px-4 py-3">#{{ $row->request_id }}</td>
                             <td class="px-4 py-3">{{ $row->request->is_group ? 'Grupal' : 'Individual' }}</td>
                             <td class="px-4 py-3">{{ $employee?->employee_number }}</td>
-                            <td class="px-4 py-3">{{ $employee?->name }} {{ $employee?->last_name }}</td>
+                            <td class="px-4 py-3">{{ $employee?->name }} {{ $employee?->surnames }}</td>
                             <td class="px-4 py-3">{{ $row->request->area?->name ?? 'Sin área' }}</td>
                             <td class="px-4 py-3">{{ $row->request->group }}</td>
                             <td class="px-4 py-3">{{ $row->day_date->format('d/m/Y') }}</td>
                             <td class="px-4 py-3">{{ number_format($row->hours, 2) }}</td>
+                            <td class="px-4 py-3">{{ $row->request->status_label }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="p-6 text-center">No hay horas extra aprobadas para estos filtros.</td></tr>
+                        <tr><td colspan="9" class="p-6 text-center">No hay solicitudes para estos filtros.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         {{ $rows->links() }}
         @endif
-        <p class="text-sm text-gray-500 dark:text-gray-400">Cada fila corresponde a un empleado y una fecha. El Excel incluye todos los resultados filtrados, además de la justificación, solicitante y fecha de aprobación final.</p>
-    </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Cada fila corresponde a un empleado y una fecha. El Excel incluye todos los resultados filtrados, con estado, justificación, solicitante, aprobación final, fechas de registro y actualización, vencimiento y situación del plazo. El total de horas incluye todos los estados.</p>
 </div>

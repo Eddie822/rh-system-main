@@ -30,7 +30,7 @@
                 </span>
                 <p class="font-medium text-gray-900 dark:text-white">
                     {{ $request->employee->name }}
-                    {{ $request->employee->last_name }}
+                    {{ $request->employee->surnames }}
                 </p>
             </div>
 
@@ -68,7 +68,7 @@
     <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 dark:text-white">
         <h2 class="font-semibold">Vencimiento de la solicitud</h2>
         <x-request-expiration :request="$request" class="mt-2" />
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Se avisa cinco días antes. El plazo vence a las 00:00 de la primera fecha de horas extra ({{ config('app.timezone') }}). El vencimiento es informativo y no bloquea la aprobación.</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Se avisa cinco días antes. El plazo vence el martes a las 00:00 de la semana siguiente a las horas extra solicitadas ({{ config('app.timezone') }}). El vencimiento es informativo y no bloquea la aprobación.</p>
     </div>
     {{-- Información Solicitud --}}
     <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
@@ -211,7 +211,7 @@
                     @foreach ($days as $day)
                         <tr class="border-b border-gray-200 dark:border-gray-700">
                             @if ($request->is_group)
-                                <td class="py-3 text-gray-900 dark:text-gray-200">{{ $day->employee?->name }} {{ $day->employee?->last_name }} / {{ $day->employee?->employee_number }}</td>
+                                <td class="py-3 text-gray-900 dark:text-gray-200">{{ $day->employee?->name }} {{ $day->employee?->surnames }} / {{ $day->employee?->employee_number }}</td>
                             @endif
 
                             <td class="py-3 text-gray-900 dark:text-gray-200">

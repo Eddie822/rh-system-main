@@ -61,12 +61,16 @@
 
         <!-- Last Name -->
         <div class="col-span-6 sm:col-span-4">
-            <x-label class="dark:text-gray-600" for="last_name" value="{{ __('Apellidos') }}" />
-            <x-input id="last_name" type="text" class="block w-full mt-1" wire:model="state.last_name" required autocomplete="family-name" readonly/>
-            <x-input-error for="last_name" class="mt-2" />
+            <x-label class="dark:text-gray-600" for="apellidos_pat" value="{{ __('Apellido paterno') }}" />
+            <x-input id="apellidos_pat" type="text" class="block w-full mt-1" wire:model="state.apellidos_pat" required autocomplete="family-name" readonly/>
+            <x-input-error for="apellidos_pat" class="mt-2" />
         </div>
 
         <!-- Employee number -->
+        <div class="col-span-6 sm:col-span-4">
+            <x-label for="apellido_mat" value="Apellido materno" />
+            <x-input id="apellido_mat" class="block w-full mt-1" wire:model="state.apellido_mat" readonly />
+        </div>
         <div class="col-span-6 sm:col-span-4">
             <x-label  class="dark:text-gray-600" for="employee_number" value="{{ __('Número de nómina') }}" />
             <x-input id="employee_number" type="text" class="block w-full mt-1" wire:model="state.employee_number" required autocomplete="username" readonly />

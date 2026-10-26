@@ -14,15 +14,15 @@ class UserCreate extends Component
 
     public string $name = '';
 
-    public string $last_name = '';
+    public string $apellidos_pat = '';
+
+    public ?string $apellido_mat = null;
 
     public string $role = 'worker';
 
     public string $area_id = '';
 
-    public string $group = '';
-
-    public string $supervisor_id = '';
+    public string $puesto = '';
 
     public string $area_manager_id = '';
 
@@ -37,10 +37,11 @@ class UserCreate extends Component
         abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
         $this->employee_number = trim($this->employee_number);
         $this->name = trim($this->name);
-        $this->last_name = trim($this->last_name);
-        $this->direct_manager_number = trim($this->direct_manager_number);
+        $this->apellidos_pat = trim($this->apellidos_pat);
+        $this->direct_manager_number = $this->role === 'worker' ? '' : trim($this->direct_manager_number);
+        $this->apellido_mat = trim($this->apellido_mat ?? '') ?: null;
         $bossRole = match ($this->role) {
-            'worker' => ['supervisor', 'area_manager'],
+            'worker' => null,
             'supervisor' => ['area_manager'],
             'plant_manager' => null,
             default => ['plant_manager'],
@@ -48,13 +49,13 @@ class UserCreate extends Component
         $validated = $this->validate([
             'employee_number' => ['required', 'string', 'max:50', Rule::unique('users', 'employee_number')],
             'name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'apellidos_pat' => ['required', 'string', 'max:255'],
+            'apellido_mat' => ['nullable', 'string', 'max:255'],
             'role' => ['required', Rule::in(['worker', 'supervisor', 'area_manager', 'hr_manager', 'plant_manager'])],
             'area_id' => [in_array($this->role, ['worker', 'supervisor', 'area_manager'], true) ? 'required' : 'nullable', 'exists:areas,id'],
-            'group' => ['nullable', 'string', 'max:255'],
-            'supervisor_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'supervisor')],
+            'puesto' => ['nullable', 'string', 'max:255'],
             'area_manager_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'area_manager')],
-            'direct_manager_number' => ['string', 'max:50', in_array($this->role, ['area_manager', 'hr_manager', 'plant_manager'], true) ? 'nullable' : 'required', Rule::exists('users', 'employee_number')->whereIn('role', $bossRole ?? ['plant_manager'])],
+            'direct_manager_number' => ['string', 'max:50', in_array($this->role, ['worker', 'area_manager', 'hr_manager', 'plant_manager'], true) ? 'nullable' : 'required', Rule::exists('users', 'employee_number')->whereIn('role', $bossRole ?? ['plant_manager'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'direct_manager_number.required' => 'La nómina del jefe directo es obligatoria.',
@@ -66,7 +67,7 @@ class UserCreate extends Component
         unset($validated['direct_manager_number']);
         if ($bossRole === null) {
             $validated['direct_manager_id'] = null;
-        } elseif (in_array($validated['role'], ['worker', 'supervisor'], true)) {
+        } elseif ($validated['role'] === 'supervisor') {
             $boss = User::findOrFail($validated['direct_manager_id']);
             if ($boss->area_id !== (int) $validated['area_id']) {
                 throw ValidationException::withMessages(['direct_manager_number' => 'El jefe directo debe pertenecer a la misma área.']);
@@ -81,21 +82,8 @@ class UserCreate extends Component
         if ($validated['role'] === 'area_manager' && User::where('role', 'area_manager')->where('area_id', $validated['area_id'])->exists()) {
             throw ValidationException::withMessages(['area_id' => 'Esta área ya tiene un gerente de área.']);
         }
-        if ($validated['role'] === 'worker') {
-            $validated['supervisor_id'] = $boss->role === 'supervisor' ? $boss->id : null;
-            $managers = User::where('role', 'area_manager')->where('area_id', $validated['area_id'])->pluck('id');
-            if ($managers->count() !== 1) {
-                throw ValidationException::withMessages(['area_id' => 'El área debe tener exactamente un gerente de área.']);
-            }
-            $validated['area_manager_id'] = $managers->first();
-        } elseif ($validated['role'] === 'supervisor') {
-            $validated['supervisor_id'] = null;
-            $validated['area_manager_id'] = $validated['direct_manager_id'];
-        } else {
-            $validated['supervisor_id'] = null;
-            $validated['area_manager_id'] = null;
-        }
-        foreach (['area_id', 'supervisor_id', 'area_manager_id', 'direct_manager_id'] as $field) {
+        $validated['area_manager_id'] = $validated['role'] === 'supervisor' ? $validated['direct_manager_id'] : null;
+        foreach (['area_id', 'area_manager_id', 'direct_manager_id'] as $field) {
             $validated[$field] = $validated[$field] ?: null;
         }
         $validated['must_change_password'] = true;
@@ -111,10 +99,9 @@ class UserCreate extends Component
 
         return view('livewire.admin.user.user-create', [
             'areas' => Area::orderBy('name')->get(),
-            'supervisors' => User::where('role', 'supervisor')->orderBy('name')->get(),
             'areaManagers' => User::where('role', 'area_manager')->orderBy('name')->get(),
             'directManagers' => User::whereIn('role', match ($this->role) {
-                'worker' => ['supervisor', 'area_manager'],
+                'worker' => [],
                 'supervisor' => ['area_manager'],
                 default => ['plant_manager'],
             })->when(in_array($this->role, ['worker', 'supervisor'], true) && $this->area_id !== '', fn ($query) => $query->where('area_id', $this->area_id))->orderBy('name')->get(),

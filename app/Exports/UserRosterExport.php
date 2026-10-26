@@ -23,22 +23,15 @@ class UserRosterExport implements Export, FromArray, ShouldAutoSize, WithColumnF
 
     public function array(): array
     {
-        return User::with(['area', 'directManager'])
-            ->orderBy('employee_number')
-            ->get()
+        return User::with('area')->orderBy('employee_number')->get()
             ->map(fn (User $user) => [
-                $user->employee_number,
-                $user->name,
-                $user->last_name,
-                UserRosterImporter::ROLE_LABELS[$user->role] ?? $user->role,
-                $user->area?->name ?? '',
-                $user->group ?? '',
-                $user->directManager?->employee_number ?? '',
+                $user->area?->name ?? '', $user->employee_number, $user->apellidos_pat,
+                $user->apellido_mat ?? '', $user->name, $user->puesto ?? '',
             ])->all();
     }
 
     public function columnFormats(): array
     {
-        return ['A' => '@', 'G' => '@'];
+        return ['B' => '@'];
     }
 }

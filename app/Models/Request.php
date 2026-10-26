@@ -34,6 +34,19 @@ class Request extends Model
         ];
     }
 
+    public const STATUS_LABELS = [
+        'pending_area_manager' => 'Pendiente de gerente de área',
+        'pending_hr_manager' => 'Pendiente de Recursos Humanos',
+        'pending_plant_manager' => 'Pendiente de gerente de planta',
+        'approved' => 'Aprobada',
+        'rejected' => 'Rechazada',
+    ];
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? $this->status;
+    }
+
     public function employee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employee_id');
@@ -42,7 +55,7 @@ class Request extends Model
     public function syncExpiration(): void
     {
         $firstDay = $this->days()->min('day_date');
-        $this->expires_at = $firstDay ? Carbon::parse($firstDay)->startOfDay() : null;
+        $this->expires_at = $firstDay ? Carbon::parse($firstDay)->startOfWeek(Carbon::MONDAY)->addWeek()->addDay()->startOfDay() : null;
         $this->saveQuietly();
     }
 

@@ -44,15 +44,20 @@
                 @enderror
             </div>
             <div>
-                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Apellido</label>
-                <input type="text" wire:model="last_name"
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Apellido paterno</label>
+                <input type="text" wire:model="apellidos_pat"
                     class="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
                            border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-                           @error('last_name') border-red-400 focus:ring-red-400 @enderror">
-                @error('last_name')
+                           @error('apellidos_pat') border-red-400 focus:ring-red-400 @enderror">
+                @error('apellidos_pat')
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
             </div>
+        </div>
+        <div>
+            <label for="apellido_mat" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Apellido materno (opcional)</label>
+            <x-input id="apellido_mat" wire:model="apellido_mat" class="w-full mt-1" />
+            <x-input-error for="apellido_mat" />
         </div>
         <div class="pt-5 border-t border-gray-200 dark:border-gray-700">
             <p class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -90,7 +95,7 @@
             @enderror
         </div>
 
-        {{-- Rol + Grupo --}}
+        {{-- Rol + Puesto --}}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Rol</label>
@@ -108,12 +113,12 @@
                 @enderror
             </div>
             <div>
-                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Grupo</label>
-                <input type="text" wire:model="group" placeholder="Ej. Turno A"
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Puesto</label>
+                <input type="text" wire:model="puesto" placeholder="Ej. Operador"
                     class="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
                            border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-                           @error('group') border-red-400 focus:ring-red-400 @enderror">
-                @error('group')
+                           @error('puesto') border-red-400 focus:ring-red-400 @enderror">
+                @error('puesto')
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
             </div>
@@ -136,33 +141,13 @@
             @enderror
         </div>
 
-        {{-- Gerente de área asignado (solo si es worker) --}}
-        @if ($role === 'worker')
-            <div>
-                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gerente de área
-                    asignado</label>
-                <select wire:model="area_manager_id"
-                    class="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                           border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-                           @error('area_manager_id') border-red-400 focus:ring-red-400 @enderror">
-                    <option value="">Sin asignar</option>
-                    @foreach ($areaManagers as $manager)
-                        <option value="{{ $manager->id }}">{{ $manager->name }} {{ $manager->last_name }}</option>
-                    @endforeach
-                </select>
-                @error('area_manager_id')
-                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                @enderror
-            </div>
-        @endif
-
-        @if ($role !== 'plant_manager')
+        @if (! in_array($role, ['worker', 'plant_manager'], true))
             <div>
                 <label for="direct_manager_number" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Nómina del jefe directo</label>
                 <input type="text" id="direct_manager_number" wire:model="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100" />
                 <datalist id="direct-manager-options">
                     @foreach ($directManagers as $manager)
-                        <option value="{{ $manager->employee_number }}">{{ $manager->employee_number }} — {{ $manager->name }} {{ $manager->last_name }}</option>
+                        <option value="{{ $manager->employee_number }}">{{ $manager->employee_number }} — {{ $manager->name }} {{ $manager->surnames }}</option>
                     @endforeach
                 </datalist>
                 @error('direct_manager_number') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror

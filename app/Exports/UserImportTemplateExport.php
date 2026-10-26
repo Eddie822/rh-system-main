@@ -43,7 +43,7 @@ class UserRosterSheet implements FromArray, ShouldAutoSize, WithColumnFormatting
 
     public function columnFormats(): array
     {
-        return ['A' => '@', 'G' => '@'];
+        return ['B' => '@'];
     }
 }
 
@@ -64,12 +64,14 @@ class UserImportGuideSheet implements FromArray, ShouldAutoSize, WithHeadings, W
     public function array(): array
     {
         $rows = [
-            ['Número de nómina', 'Obligatorio. Puede iniciar con cualquier dígito. Usa texto para ceros iniciales o más de 15 dígitos. Nóminas duplicadas se omiten.'],
-            ['Nombre / Apellidos', 'Obligatorios, máximo 255 caracteres cada uno.'],
-            ['Rol', 'Empleado, Supervisor, Gerente de área, Gerente de RH, Gerente de planta.'],
-            ['Área', 'Nombre del área. Si no existe, se crea en la tabla de áreas. Obligatoria para Empleado, Supervisor y Gerente de área.'],
-            ['Grupo', 'Opcional. Grupo o línea, máximo 255 caracteres.'],
-            ['Nómina del jefe directo', 'Obligatoria para Empleado y Supervisor; opcional para Gerente de área y Gerente de RH; vacía para Gerente de planta. Para Empleado, el jefe puede ser Supervisor o gerente de su misma área. El jefe puede aparecer después en el archivo.'],
+            ['Area', 'Obligatoria. Se conserva la relación con la tabla de áreas; si el nombre no existe se crea.'],
+            ['num_emp', 'Número de nómina obligatorio, máximo 50 caracteres. Usa texto para conservar ceros iniciales o más de 15 dígitos. Las nóminas duplicadas se omiten.'],
+            ['apell_pat', 'Apellido paterno obligatorio, máximo 255 caracteres. Se guarda en apellidos_pat.'],
+            ['apell_mat', 'Apellido materno opcional, máximo 255 caracteres. Se guarda en apellido_mat; vacío se guarda como null.'],
+            ['nombre', 'Nombre o nombres obligatorios, máximo 255 caracteres.'],
+            ['Puesto', 'Puesto laboral obligatorio, máximo 255 caracteres. No asigna permisos ni rol.'],
+            ['Acceso', 'Todos se crean como empleados, sin supervisor ni jefe directo. Los roles de autorización se configuran desde administración.'],
+            ['Límites', 'Hasta 5000 usuarios y 5 MB. Sin fórmulas. Una fila nueva inválida cancela toda la importación.'],
             ['', 'Áreas disponibles al descargar la plantilla:'],
         ];
         foreach (Area::orderBy('name')->pluck('name') as $name) {

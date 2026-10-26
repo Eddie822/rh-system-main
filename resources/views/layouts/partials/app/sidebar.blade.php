@@ -36,15 +36,15 @@
             </div>
 
             <div class="mb-4">
-                <x-label for="last_name" value="{{ __('Apellidos') }}" />
-                <x-input id="last_name" type="text" class="block w-full mt-1 sm:text-sm"
-                    value="{{ Auth::user()->last_name }}" readonly />
+                <x-label for="employee-surnames" value="{{ __('Apellidos') }}" />
+                <x-input id="employee-surnames" type="text" class="block w-full mt-1 sm:text-sm"
+                    value="{{ Auth::user()->surnames }}" readonly />
             </div>
 
             <div class="mb-4">
-                <x-label for="group" value="{{ __('Grupo') }}" />
-                <x-input id="group" type="text" class="block w-full mt-1 sm:text-sm"
-                    value="{{ Auth::user()->group ?? 'Sin grupo' }}" readonly />
+                <x-label for="puesto" value="{{ __('Puesto') }}" />
+                <x-input id="puesto" type="text" class="block w-full mt-1 sm:text-sm"
+                    value="{{ Auth::user()->puesto ?? 'Sin puesto' }}" readonly />
             </div>
 
             <div class="mb-4">
@@ -53,12 +53,7 @@
                     value="{{ Auth::user()->area?->name }}" readonly />
             </div>
 
-            <div class="mb-4">
-                <x-label for="supervisor_name" value="{{ __('Supervisor (Jefe directo)') }}" />
-                <x-input id="supervisor_name" type="text" class="block w-full mt-1 sm:text-sm"
-                    value="{{ Auth::user()->supervisor ? Auth::user()->supervisor->name : 'Supervisor no asignado' }}"
-                    readonly />
-            </div>
+
         </div>
     </aside>
 

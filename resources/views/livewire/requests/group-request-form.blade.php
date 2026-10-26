@@ -1,15 +1,15 @@
 <div class="p-6 space-y-6 bg-white rounded-lg shadow dark:bg-gray-800 dark:text-gray-100">
     <div>
         <h1 class="text-2xl font-semibold">{{ $request ? 'Editar solicitud grupal #'.$request->id : 'Nueva solicitud grupal' }}</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Incluye empleados asignados a ti, con sus fechas y horas extra. Todas las fechas deben corresponder a la misma semana.</p>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">La solicitud completa pasa por Gerente de Área → RH → Gerente de Planta. Un rechazo aplica a todo el grupo.</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Incluye empleados de cualquier área, con sus fechas y horas extra. Todas las fechas deben corresponder a la misma semana.</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">La solicitud completa pasa por el gerente de tu área → RH → Gerente de Planta. Un rechazo aplica a todo el grupo.</p>
     </div>
 
-    @if ($availableEmployees->isEmpty())
-        <p role="status" class="p-4 text-amber-800 rounded-lg bg-amber-50">No tienes trabajadores asignados. Solicita a administración que asigne tus empleados antes de crear una solicitud.</p>
+    @if (! $hasEmployees)
+        <p role="status" class="p-4 text-amber-800 rounded-lg bg-amber-50">No hay empleados registrados. Solicita a administración que importe o registre a los empleados.</p>
     @endif
 
-    <p class="text-sm text-amber-800 dark:text-amber-200">El plazo vence al iniciar la primera fecha de horas extra. Se avisa desde cinco días antes del vencimiento; una solicitud vencida aún puede aprobarse.</p>
+    <p class="text-sm text-amber-800 dark:text-amber-200">El plazo vence el martes a las 00:00 de la semana siguiente a las horas extra solicitadas. Se avisa desde cinco días antes del vencimiento; una solicitud vencida aún puede aprobarse.</p>
 
     <form wire:submit="save" class="space-y-6">
         <x-validation-errors />
@@ -30,12 +30,21 @@
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="flex-1">
                         <x-label for="employee-{{ $index }}" value="Nómina — Empleado" />
-                        <select id="employee-{{ $index }}" wire:model="employees.{{ $index }}.employee_number" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900 dark:text-white">
-                            <option value="">Selecciona un empleado</option>
-                            @foreach ($availableEmployees as $available)
-                                <option value="{{ $available->employee_number }}">{{ $available->employee_number }} — {{ $available->name }} {{ $available->last_name }}</option>
-                            @endforeach
-                        </select>
+                        <x-input id="employee-{{ $index }}" type="search" wire:model.live.debounce.300ms="employeeSearch.{{ $index }}" placeholder="Buscar por nombre o nómina" autocomplete="off" maxlength="100" class="w-full mt-1" />
+                        @if ($selected = $selectedEmployees->get($employee['employee_number']))
+                            <p class="mt-2 text-sm font-semibold" role="status">Seleccionado: {{ $selected->employee_number }} — {{ $selected->full_name }}</p>
+                        @endif
+                        @if (trim($employeeSearch[$index] ?? '') !== '')
+                            <ul class="mt-2 border rounded-md divide-y dark:border-gray-600" aria-label="Resultados de empleados">
+                                @forelse ($searchResults[$index] as $result)
+                                    <li wire:key="result-{{ $index }}-{{ $result->id }}"><button type="button" wire:click="selectEmployee({{ $index }}, {{ Js::from($result->employee_number) }})" class="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700">{{ $result->employee_number }} — {{ $result->full_name }}</button></li>
+                                @empty
+                                    <li class="px-3 py-2 text-sm" role="status">No se encontraron empleados.</li>
+                                @endforelse
+                            </ul>
+                            <p class="mt-1 text-xs text-gray-500">Se muestran hasta 10 resultados. Escribe más para precisar la búsqueda.</p>
+                        @endif
+
                     </div>
                     @if (count($employees) > 1)
                         <button type="button" data-delete-action="Quitar" data-delete-label="este empleado" onclick="confirmLivewireDeletion(event, this, 'removeEmployee', {{ $index }})" class="px-3 py-2 text-red-600">Quitar empleado</button>
@@ -67,7 +76,7 @@
             @if (count($employees) < 100)
                 <button type="button" wire:click="addEmployee" class="px-4 py-2 border rounded-lg">Agregar empleado</button>
             @endif
-            <button type="submit" wire:loading.attr="disabled" @disabled($availableEmployees->isEmpty()) class="px-4 py-2 text-white bg-blue-600 rounded-lg disabled:opacity-50">{{ $request ? 'Guardar cambios' : 'Enviar solicitud grupal' }}</button>
+            <button type="submit" wire:loading.attr="disabled" @disabled(! $hasEmployees) class="px-4 py-2 text-white bg-blue-600 rounded-lg disabled:opacity-50">{{ $request ? 'Guardar cambios' : 'Enviar solicitud grupal' }}</button>
             <a href="{{ route('requests.index') }}" class="px-4 py-2 text-gray-600 dark:text-gray-300">Volver a mis solicitudes</a>
         </div>
     </form>

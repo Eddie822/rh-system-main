@@ -12,6 +12,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -51,13 +52,16 @@ class UserAdministrationTest extends TestCase
     {
         static $number = 5000;
 
-        return User::create([
+        $user = new User;
+        $user->forceFill([
             'employee_number' => (string) ++$number,
-            'name' => 'Tester', 'last_name' => 'Admin',
+            'name' => 'Tester', (Schema::hasColumn('users', 'apellidos_pat') ? 'apellidos_pat' : 'last_name') => 'Admin',
             'password' => 'password123', 'role' => $role,
             'must_change_password' => false,
             'area_id' => func_num_args() === 0 ? Area::firstOrCreate(['name' => 'Sistemas'])->id : null,
-        ]);
+        ])->save();
+
+        return $user;
     }
 
     private function roster(array $rows): UploadedFile
@@ -92,24 +96,24 @@ class UserAdministrationTest extends TestCase
         $this->get(route('admin.users.create'))->assertOk()->assertSee('Empaque');
         $plant = $this->user('plant_manager');
         $manager = User::create([
-            'employee_number' => '0098', 'name' => 'Gerente', 'last_name' => 'Área',
+            'employee_number' => '0098', 'name' => 'Gerente', 'apellidos_pat' => 'Área',
             'role' => 'area_manager', 'area_id' => $area->id, 'direct_manager_id' => $plant->id,
             'password' => 'password123',
         ]);
         $supervisor = User::create([
-            'employee_number' => '0099', 'name' => 'Supervisora', 'last_name' => 'Prueba',
+            'employee_number' => '0099', 'name' => 'Supervisora', 'apellidos_pat' => 'Prueba',
             'role' => 'supervisor', 'area_id' => $area->id, 'area_manager_id' => $manager->id,
             'direct_manager_id' => $manager->id, 'password' => 'password123',
         ]);
         Livewire::test(UserCreate::class)
-            ->set('employee_number', '0007')->set('name', 'Ana')->set('last_name', 'Ruiz')
+            ->set('employee_number', '0007')->set('name', 'Ana')->set('apellidos_pat', 'Ruiz')
             ->set('role', 'worker')->set('area_id', (string) $area->id)
             ->set('direct_manager_number', $supervisor->employee_number)
             ->set('password', 'temporary123')->set('password_confirmation', 'temporary123')
             ->call('save')->assertHasNoErrors();
         $user = User::where('employee_number', '0007')->firstOrFail();
         $this->assertTrue($user->must_change_password);
-        $this->assertSame($supervisor->id, $user->direct_manager_id);
+        $this->assertNull($user->direct_manager_id);
         $this->assertTrue(Hash::check('temporary123', $user->password));
         $this->delete(route('admin.areas.destroy', $area))->assertSessionHas('error');
         $this->assertDatabaseHas('areas', ['id' => $area->id]);
@@ -117,253 +121,6 @@ class UserAdministrationTest extends TestCase
         $spare = Area::create(['name' => 'Almacén']);
         $this->delete(route('admin.areas.destroy', $spare))->assertRedirect(route('admin.areas.index'));
         $this->assertDatabaseMissing('areas', ['id' => $spare->id]);
-    }
-
-    public function test_import_links_employees_and_downloads_distinct_credentials(): void
-    {
-        $this->actingAs($this->user());
-        Area::create(['name' => 'Producción']);
-        $template = $this->get(route('admin.users.import.template'));
-        $template->assertOk()->assertDownload('plantilla-usuarios.xlsx');
-        $templateBook = IOFactory::load($template->baseResponse->getFile()->getPathname());
-        $this->assertSame('Número de nómina', $templateBook->getSheet(0)->getCell('A1')->getValue());
-        $this->assertSame('Nómina del jefe directo', $templateBook->getSheet(0)->getCell('G1')->getValue());
-        $this->assertSame('G', $templateBook->getSheet(0)->getHighestDataColumn());
-        $this->assertGreaterThan(10, $templateBook->getSheet(0)->getColumnDimension('A')->getWidth());
-        $this->assertStringContainsString('Producción', json_encode($templateBook->getSheet(1)->toArray(), JSON_UNESCAPED_UNICODE));
-        $templateBook->disconnectWorksheets();
-
-        $file = $this->roster([
-            ['0001', 'Luz', 'Pérez', 'worker', 'Producción', 'A', '0002'],
-            ['0002', 'José', 'López', 'supervisor', 'Producción', 'A', '0003'],
-            ['0003', 'María', 'García', 'area_manager', 'Producción', '', '0004'],
-            ['0004', 'Pedro', 'Torres', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $response = $this->post(route('admin.users.import.store'), ['file' => $file]);
-            $response->assertOk()->assertDownload();
-            $credentials = IOFactory::load($response->baseResponse->getFile()->getPathname());
-            $first = $credentials->getActiveSheet()->getCell('D2')->getValue();
-            $second = $credentials->getActiveSheet()->getCell('D3')->getValue();
-            $this->assertSame(16, strlen($first));
-            $this->assertNotSame($first, $second);
-            $this->assertSame('0001', (string) $credentials->getActiveSheet()->getCell('A2')->getValue());
-            $credentials->disconnectWorksheets();
-            $worker = User::where('employee_number', '0001')->firstOrFail();
-            $this->assertSame('0002', $worker->supervisor->employee_number);
-            $this->assertSame('0003', $worker->areaManager->employee_number);
-            $this->assertSame('0002', $worker->directManager->employee_number);
-            $this->assertSame('0003', User::where('employee_number', '0002')->firstOrFail()->directManager->employee_number);
-            $this->assertSame('0004', User::where('employee_number', '0003')->firstOrFail()->directManager->employee_number);
-            $this->assertTrue($worker->must_change_password);
-            $this->assertTrue(Hash::check($first, $worker->password));
-            $roster = $this->get(route('admin.users.import.roster'));
-            $roster->assertOk()->assertDownload('lista-completa-usuarios.xlsx');
-            $rosterBook = IOFactory::load($roster->baseResponse->getFile()->getPathname());
-            $this->assertSame('Producción', $rosterBook->getActiveSheet()->getCell('E2')->getValue());
-            $this->assertSame('Empleado', $rosterBook->getActiveSheet()->getCell('D2')->getValue());
-            $this->assertSame('0002', (string) $rosterBook->getActiveSheet()->getCell('G2')->getValue());
-            $this->assertSame('G', $rosterBook->getActiveSheet()->getHighestDataColumn());
-            $rosterBook->disconnectWorksheets();
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_spanish_excel_roles_are_saved_as_internal_codes(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            ['0091', 'Ana', 'Ruiz', 'Empleado', 'Empaque', '', '0092'],
-            ['0092', 'Sara', 'Vega', 'SUPERVISOR', 'Empaque', '', '0093'],
-            ['0093', 'Eva', 'Luna', 'gerente de area', 'Empaque', '', ''],
-            ['0095', 'Rosa', 'Sol', 'Gerente de RH', 'RH', '', ''],
-            ['0096', 'Pablo', 'Sol', 'Gerente de planta', '', '', ''],
-            ['0097', 'Luis', 'Sol', 'Trabajador', 'Empaque', '', '0093'],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertOk()->assertDownload();
-            foreach (['0091' => 'worker', '0092' => 'supervisor', '0093' => 'area_manager', '0095' => 'hr_manager', '0096' => 'plant_manager', '0097' => 'worker'] as $number => $role) {
-                $this->assertDatabaseHas('users', ['employee_number' => $number, 'role' => $role]);
-            }
-            $response = $this->get(route('admin.users.import.roster'));
-            $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
-            $roles = array_column($book->getActiveSheet()->toArray(), 3);
-            foreach (UserRosterImporter::ROLE_LABELS as $label) {
-                $this->assertContains($label, $roles);
-            }
-            $book->disconnectWorksheets();
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_duplicates_are_skipped_and_new_areas_are_created(): void
-    {
-        $this->actingAs($this->user());
-        User::create([
-            'employee_number' => '0010', 'name' => 'Existing', 'last_name' => 'User',
-            'role' => 'worker', 'password' => 'password123', 'must_change_password' => false,
-        ]);
-        $file = $this->roster([
-            ['0010', 'Different', 'Name', 'worker', 'Ignored Area', '', ''],
-            ['0011', 'Ana', 'Ruiz', 'worker', 'New Area', '', '0013'],
-            ['0011', 'Luis', 'Díaz', 'worker', 'Ignored Area', '', ''],
-            ['0012', 'Luz', 'Pérez', 'worker', 'new area', '', '0013'],
-            ['0013', 'Sara', 'Vega', 'supervisor', 'New Area', '', '0014'],
-            ['0014', 'Eva', 'Luna', 'area_manager', 'New Area', '', '0015'],
-            ['0015', 'Pablo', 'Sol', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertOk()->assertDownload();
-            $this->assertSame(2, Area::count());
-            $this->assertSame(7, User::count());
-            $this->assertSame('Existing', User::where('employee_number', '0010')->firstOrFail()->name);
-            $this->assertSame('Ana', User::where('employee_number', '0011')->firstOrFail()->name);
-            $this->assertSame('New Area', User::where('employee_number', '0012')->firstOrFail()->area->name);
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_invalid_new_row_stops_users_and_areas(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            ['0021', 'Ana', 'Ruiz', 'worker', 'New Area', '', '0023'],
-            ['0022', 'Luis', 'Díaz', 'invalid', 'New Area', '', ''],
-            ['0023', 'Sara', 'Vega', 'supervisor', 'New Area', '', '0024'],
-            ['0024', 'Eva', 'Luna', 'area_manager', 'New Area', '', '0025'],
-            ['0025', 'Pablo', 'Sol', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertSessionHasErrors('file');
-            $this->assertDatabaseMissing('users', ['employee_number' => '0021']);
-            $this->assertDatabaseMissing('areas', ['name' => 'New Area']);
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_file_with_only_existing_payroll_numbers_reports_skips(): void
-    {
-        $admin = $this->user();
-        $this->actingAs($admin);
-        $file = $this->roster([[
-            $admin->employee_number, 'Different', 'Name', 'worker', 'Ignored Area', '', '',
-        ]]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])
-                ->assertRedirect(route('admin.users.import.index'))
-                ->assertSessionHas('success', '0 usuarios importados; 1 nóminas duplicadas omitidas.');
-            $this->assertSame(1, User::count());
-            $this->assertSame(1, Area::count());
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_import_requires_the_confirmed_direct_manager_hierarchy(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            ['0031', 'Ana', 'Ruiz', 'worker', 'Empaque', '', '0032'],
-            ['0032', 'Eva', 'Luna', 'area_manager', 'Otra área', '', '0033'],
-            ['0033', 'Pablo', 'Sol', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertSessionHasErrors('file');
-            $this->assertDatabaseMissing('users', ['employee_number' => '0031']);
-            $this->assertDatabaseMissing('areas', ['name' => 'Empaque']);
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_workers_can_report_directly_to_their_area_manager_without_a_supervisor(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            ['0071', 'Ana', 'Ruiz', 'worker', 'Sistemas', '', '0074'],
-            ['0072', 'Luis', 'Sol', 'worker', 'Sistemas', '', '0074'],
-            ['0073', 'Rosa', 'Vega', 'worker', 'Sistemas', '', '0074'],
-            ['0074', 'Eva', 'Luna', 'area_manager', 'Sistemas', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertOk()->assertDownload();
-            $manager = User::where('employee_number', '0074')->firstOrFail();
-            foreach (['0071', '0072', '0073'] as $number) {
-                $worker = User::where('employee_number', $number)->firstOrFail();
-                $this->assertSame($manager->id, $worker->direct_manager_id);
-                $this->assertSame($manager->id, $worker->area_manager_id);
-                $this->assertNull($worker->supervisor_id);
-            }
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_import_allows_managers_without_bosses_and_links_workers_and_supervisors(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            ['0041', 'Ana', 'Ruiz', 'worker', 'Empaque', '', '0042'],
-            ['0042', 'Sara', 'Vega', 'supervisor', 'Empaque', '', '0043'],
-            ['0043', 'Eva', 'Luna', 'area_manager', 'Empaque', '', ''],
-            ['0044', 'Rosa', 'Sol', 'hr_manager', '', '', ''],
-            ['0045', 'Pablo', 'Sol', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertOk()->assertDownload();
-            foreach (['0043', '0044', '0045'] as $number) {
-                $manager = User::where('employee_number', $number)->firstOrFail();
-                $this->assertNull($manager->direct_manager_id);
-                $this->assertNull($manager->area_manager_id);
-            }
-            $worker = User::where('employee_number', '0041')->firstOrFail();
-            $supervisor = User::where('employee_number', '0042')->firstOrFail();
-            $this->assertSame($supervisor->id, $worker->direct_manager_id);
-            $this->assertSame($worker->area_manager_id, $supervisor->direct_manager_id);
-        } finally {
-            @unlink($file->getRealPath());
-        }
-    }
-
-    public function test_import_requires_bosses_for_non_manager_roles(): void
-    {
-        $this->actingAs($this->user());
-        foreach (['worker', 'supervisor'] as $role) {
-            $file = $this->roster([
-                ['0061', 'Ana', 'Ruiz', $role, 'Empaque', '', ''],
-                ['0062', 'Eva', 'Luna', 'area_manager', 'Empaque', '', ''],
-            ]);
-            try {
-                $this->post(route('admin.users.import.store'), ['file' => $file])->assertSessionHasErrors('file');
-                $this->assertDatabaseMissing('users', ['employee_number' => '0061']);
-                $this->assertDatabaseMissing('areas', ['name' => 'Empaque']);
-            } finally {
-                @unlink($file->getRealPath());
-            }
-        }
-    }
-
-    public function test_numeric_payroll_cells_can_start_with_any_digit(): void
-    {
-        $this->actingAs($this->user());
-        $file = $this->roster([
-            [8123, 'Ana', 'Ruiz', 'worker', 'Empaque', '', 3456],
-            [3456, 'Sara', 'Vega', 'supervisor', 'Empaque', '', 5678],
-            [5678, 'Eva', 'Luna', 'area_manager', 'Empaque', '', 7890],
-            [7890, 'Pablo', 'Sol', 'plant_manager', '', '', ''],
-        ]);
-        try {
-            $this->post(route('admin.users.import.store'), ['file' => $file])->assertOk()->assertDownload();
-            $worker = User::where('employee_number', '8123')->firstOrFail();
-            $this->assertSame('3456', $worker->directManager->employee_number);
-            $this->assertSame('5678', $worker->areaManager->employee_number);
-        } finally {
-            @unlink($file->getRealPath());
-        }
     }
 
     public function test_import_and_area_management_are_restricted(): void
@@ -400,25 +157,26 @@ class UserAdministrationTest extends TestCase
         }
     }
 
-    public function test_systems_area_manager_can_create_an_employee_reporting_to_them(): void
+    public function test_systems_area_manager_can_create_an_unassigned_employee(): void
     {
         $manager = $this->user('area_manager');
         $area = Area::firstOrCreate(['name' => 'Sistemas']);
         $manager->update(['area_id' => $area->id]);
         Livewire::actingAs($manager)->test(UserCreate::class)
-            ->set('employee_number', '0081')->set('name', 'Ana')->set('last_name', 'Ruiz')
+            ->set('employee_number', '0081')->set('name', 'Ana')->set('apellidos_pat', 'Ruiz')
             ->set('area_id', (string) $area->id)->set('direct_manager_number', $manager->employee_number)
             ->set('password', 'password123')->set('password_confirmation', 'password123')
             ->call('save')->assertHasNoErrors();
         $worker = User::where('employee_number', '0081')->firstOrFail();
-        $this->assertSame($manager->id, $worker->direct_manager_id);
-        $this->assertSame($manager->id, $worker->area_manager_id);
-        $this->assertNull($worker->supervisor_id);
+        $this->assertNull($worker->direct_manager_id);
+        $this->assertNull($worker->area_manager_id);
         $this->assertTrue($worker->canAccessAdminPanel());
     }
 
     public function test_confirmed_legacy_accounts_are_converted_without_losing_requests(): void
     {
+        $restructure = require database_path('migrations/2026_10_22_000001_restructure_employee_details.php');
+        $restructure->down();
         $area = Area::create(['name' => 'Sistemas']);
         $manager = $this->user('admin');
         $manager->update(['employee_number' => '0356', 'area_id' => $area->id]);
@@ -454,7 +212,7 @@ class UserAdministrationTest extends TestCase
         $area = Area::firstOrCreate(['name' => 'Sistemas']);
         $manager = $this->user('area_manager');
         $manager->update(['employee_number' => '0356', 'area_id' => $area->id]);
-        $employee = $this->user('worker');
+        $employee = $this->user('supervisor');
         $employee->update(['area_id' => $area->id, 'direct_manager_id' => $manager->id]);
         $component = Livewire::test(UserEdit::class, ['user' => $employee])
             ->assertSet('direct_manager_number', '0356')
@@ -466,7 +224,6 @@ class UserAdministrationTest extends TestCase
         $component->set('direct_manager_number', ' 0356 ')->call('save')->assertHasNoErrors();
         $this->assertSame($manager->id, $employee->fresh()->direct_manager_id);
         $this->assertSame($manager->id, $employee->fresh()->area_manager_id);
-        $this->assertNull($employee->fresh()->supervisor_id);
     }
 
     public function test_admin_can_delete_an_unreferenced_user_and_sees_sweetalert_confirmation(): void
@@ -493,7 +250,7 @@ class UserAdministrationTest extends TestCase
         $employee = $this->user('worker');
         $manager = $this->user('supervisor');
         $this->actingAs($admin);
-        $employee->update(['supervisor_id' => $manager->id]);
+        $employee->update(['role' => 'supervisor', 'direct_manager_id' => $manager->id]);
         $this->delete(route('admin.users.destroy', $manager))->assertSessionHas('error');
         $this->delete(route('admin.users.destroy', $admin))->assertSessionHas('error');
 
@@ -514,5 +271,192 @@ class UserAdministrationTest extends TestCase
             ->delete(route('admin.users.destroy', $employee))
             ->assertForbidden();
         $this->assertDatabaseHas('users', ['id' => $employee->id]);
+    }
+
+    public function test_six_column_import_creates_unassigned_employees_and_downloads_credentials(): void
+    {
+        $this->actingAs($this->user());
+        $file = $this->roster([
+            ['Producción', '0001', 'De la Cruz', 'López', 'Ana María', 'Operador'],
+            ['Almacén', '0002', 'Pérez', '', 'José', 'Supervisor'],
+        ]);
+        try {
+            $response = $this->post(route('admin.users.import.store'), ['file' => $file]);
+            $response->assertOk()->assertDownload();
+            $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
+            $sheet = $book->getActiveSheet();
+            $firstPassword = $sheet->getCell('E2')->getValue();
+            $this->assertSame('0001', $sheet->getCell('A2')->getValue());
+            $this->assertSame('Apellido materno', $sheet->getCell('D1')->getValue());
+            $this->assertSame('López', $sheet->getCell('D2')->getValue());
+            $this->assertNotSame($firstPassword, $sheet->getCell('E3')->getValue());
+            $book->disconnectWorksheets();
+            $first = User::where('employee_number', '0001')->firstOrFail();
+            $second = User::where('employee_number', '0002')->firstOrFail();
+            $this->assertSame('Ana María De la Cruz López', $first->full_name);
+            $this->assertSame('Operador', $first->puesto);
+            $this->assertSame('Producción', $first->area->name);
+            $this->assertNull($first->direct_manager_id);
+            $this->assertNull($second->apellido_mat);
+            $this->assertSame('worker', $second->role); // Puesto must not grant authorization privileges.
+            $this->assertTrue($first->must_change_password);
+            $this->assertTrue(Hash::check($firstPassword, $first->password));
+            $this->assertSame(16, strlen($firstPassword));
+        } finally {
+            @unlink($file->getRealPath());
+        }
+    }
+
+    public function test_template_and_roster_have_the_same_six_columns_and_preserve_payroll(): void
+    {
+        $admin = $this->user();
+        $admin->update(['employee_number' => '0001', 'puesto' => 'Analista', 'apellido_mat' => 'López']);
+        $this->actingAs($admin);
+        foreach (['admin.users.import.template', 'admin.users.import.roster'] as $route) {
+            $response = $this->get(route($route))->assertOk()->assertDownload();
+            $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
+            $sheet = $book->getSheet(0);
+            $this->assertSame(UserRosterImporter::HEADERS, $sheet->rangeToArray('A1:F1')[0]);
+            $this->assertSame('F', $sheet->getHighestDataColumn());
+            if ($route === 'admin.users.import.roster') {
+                $this->assertSame('Sistemas', $sheet->getCell('A2')->getValue());
+                $this->assertSame('0001', $sheet->getCell('B2')->getValue());
+                $this->assertSame('López', $sheet->getCell('D2')->getValue());
+                $this->assertSame('Analista', $sheet->getCell('F2')->getValue());
+            } else {
+                $this->assertStringContainsString('Sistemas', json_encode($book->getSheet(1)->toArray()));
+            }
+            $book->disconnectWorksheets();
+        }
+    }
+
+    public function test_import_skips_existing_and_repeated_payroll_without_updating_them(): void
+    {
+        $existing = $this->user();
+        $file = $this->roster([
+            ['Ignored area', $existing->employee_number, 'Different', '', 'Different', 'Different'],
+            ['Nueva área', '0011', 'Ruiz', '', 'Ana', 'Operador'],
+            ['Nueva área', '0011', 'Other', '', 'Other', 'Other'],
+            ['nueva área', 8123, 'Pérez', 'Torres', 'José', 'Técnico'],
+        ]);
+        try {
+            $result = app(UserRosterImporter::class)->import($file);
+            $this->assertCount(2, $result['credentials']);
+            $this->assertCount(2, $result['skipped']);
+            $this->assertSame('Tester', $existing->fresh()->name);
+            $this->assertSame('Ana', User::where('employee_number', '0011')->firstOrFail()->name);
+            $this->assertDatabaseHas('users', ['employee_number' => '8123']);
+            $this->assertSame(1, Area::whereRaw('lower(name) = ?', ['nueva área'])->count());
+            $this->assertDatabaseMissing('areas', ['name' => 'Ignored area']);
+        } finally {
+            @unlink($file->getRealPath());
+        }
+    }
+
+    public function test_invalid_import_is_atomic_and_reports_row_numbers(): void
+    {
+        $this->actingAs($this->user());
+        foreach ([
+            ['Nueva', '0022', '', '', 'Ana', 'Operador'],
+            ['Nueva', '0022', 'Ruiz', '', 'Ana', ''],
+            ['Nueva', '0022', 'Ruiz', '=1+1', 'Ana', 'Operador'],
+            ['Nueva', 12.5, 'Ruiz', '', 'Ana', 'Operador'],
+            ['Nueva', -1, 'Ruiz', '', 'Ana', 'Operador'],
+            ['Nueva', 1000000000000000, 'Ruiz', '', 'Ana', 'Operador'],
+        ] as $invalid) {
+            $file = $this->roster([['Nueva', '0021', 'Pérez', '', 'José', 'Técnico'], $invalid]);
+            try {
+                $this->post(route('admin.users.import.store'), ['file' => $file])
+                    ->assertSessionHasErrors('file');
+                $this->assertDatabaseMissing('users', ['employee_number' => '0021']);
+                $this->assertDatabaseMissing('areas', ['name' => 'Nueva']);
+                $this->assertStringContainsString('Fila 3:', implode(' ', session('errors')->get('file')));
+            } finally {
+                @unlink($file->getRealPath());
+            }
+        }
+    }
+
+    public function test_import_rejects_old_columns_and_extra_columns(): void
+    {
+        $this->actingAs($this->user());
+        $file = $this->roster([['Nueva', '0021', 'Pérez', '', 'José', 'Técnico', 'extra']]);
+        try {
+            $this->post(route('admin.users.import.store'), ['file' => $file])->assertSessionHasErrors('file');
+            $this->assertDatabaseMissing('users', ['employee_number' => '0021']);
+        } finally {
+            @unlink($file->getRealPath());
+        }
+    }
+
+    public function test_employee_edit_saves_both_surnames_and_position_without_a_supervisor(): void
+    {
+        $admin = $this->user();
+        $worker = $this->user('worker');
+        Livewire::actingAs($admin)->test(UserEdit::class, ['user' => $worker])
+            ->set('apellidos_pat', 'De la Cruz')->set('apellido_mat', 'López')->set('puesto', 'Técnico')
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame('Tester De la Cruz López', $worker->fresh()->full_name);
+        $this->assertSame('Técnico', $worker->fresh()->puesto);
+        $this->assertNull($worker->fresh()->direct_manager_id);
+        Livewire::actingAs($admin)->test(UserEdit::class, ['user' => $worker])
+            ->set('apellido_mat', '')->call('save')->assertHasNoErrors();
+        $this->assertNull($worker->fresh()->apellido_mat);
+    }
+
+    public function test_import_handles_production_cost_password_hashing_with_a_short_request_limit(): void
+    {
+        $this->actingAs($this->user());
+        $file = $this->roster(array_map(fn ($number) => [
+            'Producción', (string) $number, 'Pérez', '', 'Usuario '.$number, 'Operador',
+        ], range(90001, 90008)));
+        $originalLimit = (int) ini_get('max_execution_time');
+        $originalRounds = config('hashing.bcrypt.rounds');
+        config(['hashing.driver' => 'bcrypt', 'hashing.bcrypt.rounds' => 12]);
+        Hash::forgetDrivers();
+
+        try {
+            // Actual bcrypt work exceeds this limit on typical servers; it must not
+            // inherit the short limit used by ordinary requests.
+            set_time_limit(1);
+            $response = $this->post(route('admin.users.import.store'), ['file' => $file]);
+            $restoredLimit = (int) ini_get('max_execution_time');
+            set_time_limit(0);
+            $response->assertOk()->assertDownload();
+            $this->assertSame(1, $restoredLimit);
+            $users = User::whereBetween('employee_number', ['90001', '90008'])->get();
+            $this->assertCount(8, $users);
+            foreach ($users as $user) {
+                $this->assertSame(12, password_get_info($user->password)['options']['cost']);
+            }
+            $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
+            $this->assertTrue(Hash::check($book->getSheet(0)->getCell('E2')->getValue(), $users->first()->password));
+            $book->disconnectWorksheets();
+        } finally {
+            set_time_limit($originalLimit);
+            config(['hashing.bcrypt.rounds' => $originalRounds]);
+            Hash::forgetDrivers();
+            @unlink($file->getRealPath());
+        }
+    }
+
+    public function test_failed_import_restores_request_limit_and_keeps_database_unchanged(): void
+    {
+        $this->actingAs($this->user());
+        $file = $this->roster([
+            ['Nueva', '90001', 'Pérez', '', 'José', 'Operador'],
+            ['Nueva', '90002', '', '', 'Ana', 'Operador'],
+        ]);
+        $originalLimit = (int) ini_get('max_execution_time');
+        try {
+            set_time_limit(30);
+            $this->post(route('admin.users.import.store'), ['file' => $file])->assertSessionHasErrors('file');
+            $this->assertSame(30, (int) ini_get('max_execution_time'));
+            $this->assertDatabaseMissing('users', ['employee_number' => '90001']);
+            $this->assertDatabaseMissing('areas', ['name' => 'Nueva']);
+        } finally {
+            set_time_limit($originalLimit);
+            @unlink($file->getRealPath());
+        }
     }
 }

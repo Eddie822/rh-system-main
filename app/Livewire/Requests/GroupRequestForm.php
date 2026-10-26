@@ -22,6 +22,8 @@ class GroupRequestForm extends Component
 
     public array $employees = [];
 
+    public array $employeeSearch = [];
+
     public function mount(?Request $request = null): void
     {
         Gate::authorize('createGroup', Request::class);
@@ -53,8 +55,28 @@ class GroupRequestForm extends Component
         if (count($this->employees) > 1) {
             unset($this->employees[$index]);
             $this->employees = array_values($this->employees);
+            $this->employeeSearch = []; // Clear searches when row indices change.
             $this->resetValidation();
         }
+    }
+
+    public function updatedEmployeeSearch($value, $index): void
+    {
+        if (isset($this->employees[$index])) {
+            $this->employees[$index]['employee_number'] = '';
+        }
+    }
+
+    public function selectEmployee(int $index, string $number): void
+    {
+        Gate::authorize('createGroup', Request::class);
+        if (! isset($this->employees[$index])) {
+            return;
+        }
+        $employee = User::where('role', 'worker')->where('employee_number', $number)->firstOrFail();
+        $this->employees[$index]['employee_number'] = $employee->employee_number;
+        $this->employeeSearch[$index] = '';
+        $this->resetValidation("employees.$index.employee_number");
     }
 
     public function addDay(int $index): void
@@ -83,13 +105,13 @@ class GroupRequestForm extends Component
             'employees' => 'required|array|min:1|max:100',
             'employees.*.employee_number' => [
                 'required', 'string', 'distinct',
-                Rule::exists('users', 'employee_number')->where('supervisor_id', $user->id)->where('role', 'worker'),
+                Rule::exists('users', 'employee_number')->where('role', 'worker'),
             ],
             'employees.*.days' => 'required|array|min:1|max:7',
             'employees.*.days.*.day_date' => 'required|date_format:Y-m-d|after:today',
             'employees.*.days.*.hours' => 'required|numeric|gt:0|max:12|decimal:0,2',
         ], [
-            'employees.*.employee_number.exists' => 'Selecciona un trabajador asignado a ti.',
+            'employees.*.employee_number.exists' => 'Selecciona un empleado registrado con rol de trabajador.',
             'employees.*.employee_number.distinct' => 'El empleado ya está incluido en esta solicitud.',
         ]);
 
@@ -119,7 +141,7 @@ class GroupRequestForm extends Component
                 abort_unless($request->is_group, 403);
             }
 
-            $employees = User::where('supervisor_id', $user->id)->where('role', 'worker')
+            $employees = User::where('role', 'worker')
                 ->whereIn('employee_number', array_column($validated['employees'], 'employee_number'))
                 ->lockForUpdate()->get()->keyBy('employee_number');
             abort_unless($employees->count() === count($validated['employees']), 403);
@@ -156,9 +178,26 @@ class GroupRequestForm extends Component
     {
         Gate::authorize('createGroup', Request::class);
 
+        $results = [];
+        foreach ($this->employees as $index => $entry) {
+            $term = trim(mb_substr((string) ($this->employeeSearch[$index] ?? ''), 0, 100));
+            $results[$index] = $term === '' ? collect() : User::where('role', 'worker')
+                ->where(function ($query) use ($term) {
+                    foreach (preg_split('/\s+/u', $term) as $word) {
+                        $query->where(fn ($part) => $part->where('employee_number', 'like', "%{$word}%")
+                            ->orWhere('name', 'like', "%{$word}%")
+                            ->orWhere('apellidos_pat', 'like', "%{$word}%")
+                            ->orWhere('apellido_mat', 'like', "%{$word}%"));
+                    }
+                })->orderBy('employee_number')->limit(10)->get();
+        }
+
         return view('livewire.requests.group-request-form', [
-            'availableEmployees' => User::where('supervisor_id', auth()->id())->where('role', 'worker')
-                ->orderBy('employee_number')->get(['id', 'employee_number', 'name', 'last_name']),
+            'searchResults' => $results,
+            'selectedEmployees' => User::where('role', 'worker')
+                ->whereIn('employee_number', array_column($this->employees, 'employee_number'))
+                ->get()->keyBy('employee_number'),
+            'hasEmployees' => User::where('role', 'worker')->exists(),
         ]);
     }
 }

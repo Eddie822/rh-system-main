@@ -28,51 +28,21 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td class="p-2">A</td>
-                        <td class="p-2">Número de nómina</td>
-                        <td class="p-2">Nómina única, obligatoria; texto solo para conservar ceros iniciales o más de 15 dígitos</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">B</td>
-                        <td class="p-2">Nombre</td>
-                        <td class="p-2">Nombre, obligatorio</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">C</td>
-                        <td class="p-2">Apellidos</td>
-                        <td class="p-2">Apellidos, obligatorios</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">D</td>
-                        <td class="p-2">Rol</td>
-                        <td class="p-2">Empleado, Supervisor, Gerente de área, Gerente de RH, Gerente de planta</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">E</td>
-                        <td class="p-2">Área</td>
-                        <td class="p-2">Nombre del área; si no existe se crea en la tabla de áreas. Obligatorio para
-                            Empleado, Supervisor y Gerente de área</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">F</td>
-                        <td class="p-2">Grupo</td>
-                        <td class="p-2">Grupo o línea, opcional</td>
-                    </tr>
-                    <tr>
-                        <td class="p-2">G</td>
-                        <td class="p-2">Nómina del jefe directo</td>
-                        <td class="p-2">Obligatoria para Empleado y Supervisor; opcional para gerentes de área y RH;
-                            vacía para gerente de planta. El jefe puede estar en cualquier fila de este archivo</td>
-                    </tr>
+                    @foreach ([
+                        ['A', 'Area', 'Nombre del área, obligatorio. Si no existe, se crea.'],
+                        ['B', 'num_emp', 'Número de nómina obligatorio. Usa texto para conservar ceros iniciales.'],
+                        ['C', 'apell_pat', 'Apellido paterno obligatorio.'],
+                        ['D', 'apell_mat', 'Apellido materno opcional; puede quedar vacío.'],
+                        ['E', 'nombre', 'Nombre o nombres obligatorios.'],
+                        ['F', 'Puesto', 'Puesto laboral obligatorio. No determina el rol de acceso.'],
+                    ] as $column)
+                        <tr>@foreach ($column as $value)<td class="p-2">{{ $value }}</td>@endforeach</tr>
+                    @endforeach
                 </tbody>
             </table>
-            <p class="mt-4 text-sm">El Supervisor y el gerente de área se asignan automáticamente a partir del jefe directo y del área. El orden de las filas no importa: los jefes pueden aparecer después de sus equipos.
-                Los trabajadores también pueden reportar directamente al gerente de su área y quedar sin Supervisor.
-                La jerarquía también puede ser trabajador → Supervisor → gerente de área → gerente de planta; el gerente de RH también reporta al gerente de planta. Los gerentes de área y RH pueden dejar el jefe directo vacío;
-                el gerente de área asignado queda vacío para los tres roles de gerente. Las nóminas ya existentes y las repetidas en el
-                archivo se omiten; se conserva la primera fila nueva de cada nómina. Una fila nueva inválida cancela la
-                importación completa y muestra el error. El archivo admite hasta 5,000 usuarios y 5 MB.</p>
+            <p class="mt-4 text-sm">Los usuarios se crean como empleados sin supervisor ni jefe directo asignado. Los supervisores pueden incluir empleados de cualquier área en sus solicitudes. Los roles de autorización se configuran desde administración.</p>
+            <p class="mt-3 text-sm">Las nóminas existentes o repetidas se omiten sin modificar sus datos. Una fila nueva inválida cancela toda la importación. Hasta 5,000 usuarios y 5 MB por archivo .xlsx. No uses fórmulas.</p>
+            <p class="mt-3 text-sm">Los archivos grandes pueden tardar varios minutos. Espera a que se descarguen las credenciales antes de volver a enviar el archivo.</p>
         </div>
         <div class="p-5 bg-white rounded-lg dark:bg-gray-800">
             <h2 class="mb-2 font-semibold">Áreas disponibles en la base de datos</h2>

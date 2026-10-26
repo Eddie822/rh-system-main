@@ -73,6 +73,7 @@
                         @endif
                     </th>
                     <th class="px-2 PX-4">Apellidos</th>
+                    <th class="px-2 PX-4">Puesto</th>
                     <th class="px-4 py-2">Rol</th>
                     <th class="px-4 py-2">Área</th>
                     <th class="px-4 py-2">Acciones</th>
@@ -84,7 +85,8 @@
                         class="text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td class="px-4 py-2 whitespace-nowrap">{{ $user->employee_number }}</td>
                         <td class="px-4 py-2">{{ $user->name }}</td>
-                        <td class="px-4 py-2">{{ $user->last_name }}</td>
+                        <td class="px-4 py-2">{{ $user->surnames }}</td>
+                        <td class="px-4 py-2">{{ $user->puesto ?? '—' }}</td>
                         <td class="px-4 py-2">{{ $roles[$user->role] ?? $user->role }}</td>
                         <td class="px-4 py-2">{{ $user->area->name ?? '—' }}</td>
                         <td class="px-4 py-2 whitespace-nowrap">
@@ -118,7 +120,7 @@
                                 </a>
                                 @can('deleteUsers')
                                     @if (! $user->is(auth()->user()))
-                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->last_name }}" onsubmit="confirmDeleteForm(event, this)">
+                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->surnames }}" onsubmit="confirmDeleteForm(event, this)">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">Eliminar</button>
                                         </form>
@@ -146,9 +148,9 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->name }}</p>
-                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->last_name }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">No. Nómina: {{ $user->employee_number }}
-                        </p>
+                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->surnames }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">No. Nómina: {{ $user->employee_number }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Puesto: {{ $user->puesto ?? '—' }}</p>
                     </div>
                     <span
                         class="px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded-full dark:bg-gray-700 dark:text-gray-200">
@@ -185,7 +187,7 @@
                     </a>
                     @can('deleteUsers')
                         @if (! $user->is(auth()->user()))
-                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->last_name }}" onsubmit="confirmDeleteForm(event, this)">
+                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" data-delete-label="el usuario" data-delete-name="{{ $user->employee_number }} — {{ $user->name }} {{ $user->surnames }}" onsubmit="confirmDeleteForm(event, this)">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-full px-3 py-2 text-sm font-medium text-red-700 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">Eliminar</button>
                             </form>

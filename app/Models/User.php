@@ -34,14 +34,14 @@ class User extends Authenticatable
     protected $fillable = [
         'employee_number',
         'name',
-        'last_name',
+        'apellidos_pat',
+        'apellido_mat',
         'password',
         'must_change_password',
         'role',
         'area_id',
-        'group',
+        'puesto',
         'area_manager_id',
-        'supervisor_id',
         'direct_manager_id',
     ];
 
@@ -79,6 +79,16 @@ class User extends Authenticatable
         ];
     }
 
+    public function getSurnamesAttribute(): string
+    {
+        return trim($this->apellidos_pat.' '.$this->apellido_mat);
+    }
+
+    public function getFullNameAttribute(): string
+    {
+        return trim($this->name.' '.$this->surnames);
+    }
+
     public function canAccessAdminPanel(): bool
     {
         $areaName = Str::lower(Str::ascii(trim($this->area?->name ?? '')));
@@ -103,16 +113,6 @@ class User extends Authenticatable
     public function areaManager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'area_manager_id');
-    }
-
-    public function subordinates(): HasMany
-    {
-        return $this->hasMany(User::class, 'supervisor_id');
-    }
-
-    public function supervisor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'supervisor_id');
     }
 
     public function directManager(): BelongsTo

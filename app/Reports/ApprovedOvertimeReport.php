@@ -31,9 +31,8 @@ class ApprovedOvertimeReport
         [$from, $to] = $this->dates();
 
         return RequestDay::query()
-            ->with(['employee', 'request.employee', 'request.area', 'request.authorizations' => fn ($query) => $query
-                ->where('authorization_role', 'plant_manager')->where('action', 'approved')])
-            ->whereHas('request', fn ($query) => $query->where('status', 'approved')
+            ->with(['employee.area', 'request.employee.area', 'request.area', 'request.authorizations.user'])
+            ->whereHas('request', fn ($query) => $query
                 ->when($this->filters['area_id'] ?? null, fn ($query, $area) => $query->where('area_id', $area)))
             ->where('day_date', '>=', $from)
             ->where('day_date', '<', CarbonImmutable::parse($to)->addDay()->toDateString())

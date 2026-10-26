@@ -41,8 +41,7 @@ class UserController extends Controller
             || $user->groupRequests()->exists()
             || $user->authorizations()->exists()
             || DB::table('request_days')->where('employee_id', $user->id)->exists();
-        $hasReports = User::where('supervisor_id', $user->id)
-            ->orWhere('area_manager_id', $user->id)
+        $hasReports = User::where('area_manager_id', $user->id)
             ->orWhere('direct_manager_id', $user->id)
             ->exists();
 

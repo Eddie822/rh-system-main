@@ -4,16 +4,16 @@
 
 All personnel assigned to Sistemas or Recursos Humanos (also named RH) can open **Reportes** in the admin sidebar, regardless of job role. Personnel in other areas cannot access the preview or download endpoint.
 
-- Only requests with final status `approved` are included, for both individual and grouped requests.
+- All requests are included regardless of status: pending at any approval stage, approved, and rejected, for both individual and grouped requests. Preview totals include all statuses.
 - Filter by overtime day, ISO week/year (Monday–Sunday), or an inclusive date range. Area and employee payroll number are optional filters. The area list is read from the current `areas` database table on each Livewire render; the approvals inbox and user administration also read this table.
 - Filters refer to the overtime date, not the submission or approval date. For a group request, payroll filters match the participating worker, not the supervisor who submitted it.
 - The Livewire preview and totals update as filters change, without a full page reload, and show 25 rows per page. **Descargar Excel** keeps a normal validated download endpoint and downloads every matching row, one row per employee and overtime date.
-- Excel columns include request ID/type, payroll number, employee, request area/group, overtime date, ISO year/week, hours, reason, submitter, and final approval timestamp when present.
+- Excel contains exactly 18 columns in this order: Solicitud, Tipo, Nómina, Empleado, Área de la solicitud, Grupo / Línea, Fecha de horas extra, Año ISO, Semana ISO, Horas, Justificación, Solicitante, Aprobación final, Estado, Fecha de registro, Última actualización, Vencimiento, Situación del plazo.
 - Payroll numbers retain leading zeros; hours are numeric; user text is written literally rather than interpreted as Excel formulas.
 
 ## Deadlines and alerts
 
-The request deadline is midnight in `config('app.timezone')`, on the earliest overtime date. For example, overtime starting October 10 has a deadline of October 10 at 00:00; warnings start October 5 at 00:00. A grouped request has one shared deadline based on all its employees' dates.
+The request deadline is Tuesday at 00:00 in `config('app.timezone')`, in the ISO week following the requested overtime week. For example, week 45 expires on Tuesday of week 46; warnings start five days before that deadline. A grouped request has one shared deadline based on its employees' overtime week.
 
 - Pending requests show **Por vencer** during the five days before the deadline, then **Vencida** at or after the deadline.
 - Expiration is advisory: it never changes the approval status and never blocks approval, rejection, or otherwise-permitted editing.
@@ -34,4 +34,4 @@ npm run build
 
 The listed tests explicitly use isolated SQLite in-memory databases.
 
-The follow-up migration `2026_09_29_130000_align_request_deadlines_with_overtime.php` recalculates existing deadlines to the first overtime date. The five-day period is an advance warning only.
+The follow-up migration `2026_09_29_130000_align_request_deadlines_with_overtime.php` recalculates existing deadlines to the first overtime date. Migration `2026_10_23_000001_move_request_deadlines_to_following_tuesday.php` updates existing deadlines to Tuesday of the following week without changing statuses or decisions. The five-day period is an advance warning only.

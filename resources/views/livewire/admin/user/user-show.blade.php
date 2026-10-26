@@ -23,7 +23,7 @@
         <div class="flex items-start justify-between">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {{ $user->name }} {{ $user->last_name }}
+                    {{ $user->name }} {{ $user->surnames }}
                 </h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                     No. Nómina: {{ $user->employee_number }}
@@ -53,23 +53,20 @@
                 <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->area->name ?? '—' }}</dd>
             </div>
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Grupo</dt>
-                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->group ?? '—' }}</dd>
+                <dt class="text-gray-500 dark:text-gray-400">Puesto</dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->puesto ?? '—' }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Gerente de área</dt>
                 <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ $user->areaManager ? $user->areaManager->name . ' ' . $user->areaManager->last_name : '—' }}
+                    {{ $user->areaManager ? $user->areaManager->name . ' ' . $user->areaManager->surnames : '—' }}
                 </dd>
             </div>
             <div>
                 <dt class="text-gray-500 dark:text-gray-400">Jefe directo</dt>
-                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->directManager ? $user->directManager->name . ' ' . $user->directManager->last_name : ($user->role === 'plant_manager' ? 'No aplica' : 'Sin asignar') }}</dd>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->directManager ? $user->directManager->name . ' ' . $user->directManager->surnames : (in_array($user->role, ['worker', 'plant_manager'], true) ? 'No aplica' : 'Sin asignar') }}</dd>
             </div>
         </dl>
-        @if ($user->role === 'worker')
-            <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">Supervisor: {{ $user->supervisor?->name ?? 'Sin asignar' }} {{ $user->supervisor?->last_name }}</p>
-        @endif
     </div>
 
     {{-- Historial de solicitudes --}}

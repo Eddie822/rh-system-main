@@ -18,7 +18,7 @@ class UserCredentialsExport implements Export, FromArray, ShouldAutoSize, WithCo
 
     public function headings(): array
     {
-        return ['Número de nómina', 'Nombre', 'Apellidos', 'Contraseña temporal'];
+        return ['Número de nómina', 'Nombre', 'Apellido paterno', 'Apellido materno', 'Contraseña temporal'];
     }
 
     public function array(): array
@@ -28,6 +28,6 @@ class UserCredentialsExport implements Export, FromArray, ShouldAutoSize, WithCo
 
     public function columnFormats(): array
     {
-        return ['A' => '@', 'D' => '@'];
+        return ['A' => '@', 'E' => '@'];
     }
 }

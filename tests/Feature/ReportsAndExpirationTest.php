@@ -59,7 +59,7 @@ class ReportsAndExpirationTest extends TestCase
 
         return User::create(array_merge([
             'employee_number' => (string) ++$number, 'name' => 'Employee '.$number,
-            'last_name' => 'Test', 'password' => 'password123', 'role' => $role,
+            'apellidos_pat' => 'Test', 'password' => 'password123', 'role' => $role,
             'must_change_password' => false,
         ], $attributes));
     }
@@ -102,7 +102,7 @@ class ReportsAndExpirationTest extends TestCase
         }
     }
 
-    public function test_report_filters_overtime_dates_and_includes_only_final_approvals(): void
+    public function test_report_filters_overtime_dates_and_includes_every_status(): void
     {
         $approved = $this->request();
         $approved->days()->create(['day_date' => '2030-01-08', 'hours' => 3]);
@@ -111,14 +111,15 @@ class ReportsAndExpirationTest extends TestCase
         }
         $this->request(date: '2030-01-14');
         $daily = new ApprovedOvertimeReport(['period' => 'day', 'date' => '2030-01-07']);
-        $this->assertSame([$approved->id], $daily->query()->pluck('request_id')->all());
+        $this->assertCount(5, $daily->query()->get());
+        $this->assertCount(5, $daily->query()->get()->pluck('request.status')->unique());
         $weekly = new ApprovedOvertimeReport(['period' => 'week', 'year' => 2030, 'week' => 2]);
-        $this->assertCount(2, $weekly->query()->get());
+        $this->assertCount(6, $weekly->query()->get());
         $range = new ApprovedOvertimeReport(['period' => 'range', 'from' => '2030-01-08', 'to' => '2030-01-14']);
         $this->assertCount(2, $range->query()->get());
         Livewire::actingAs($this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]), 'web')->test(ApprovedOvertime::class)
             ->set('year', '2030')->set('week', '2')
-            ->assertViewHas('hours', 5.5)->assertViewHas('requestCount', 1);
+            ->assertViewHas('hours', 15.5)->assertViewHas('requestCount', 5);
     }
 
     public function test_group_report_uses_participant_payroll_numbers_without_double_counting(): void
@@ -242,28 +243,76 @@ class ReportsAndExpirationTest extends TestCase
         }
     }
 
+    public function test_excel_contains_only_the_requested_columns_and_all_states(): void
+    {
+        $this->travelTo(Carbon::parse('2030-01-08 12:00'));
+        $requests = collect(['pending_area_manager', 'pending_hr_manager', 'pending_plant_manager', 'approved', 'rejected'])
+            ->map(fn ($status) => $this->request($status));
+        $rejected = $requests->last();
+        $rejected->employee->update(['apellidos_pat' => 'De la Cruz', 'apellido_mat' => 'López', 'puesto' => 'Técnico']);
+        $manager = $this->user('area_manager', ['employee_number' => '0009', 'apellido_mat' => 'Torres']);
+        $rejected->authorizations()->create(['user_id' => $manager->id,
+            'authorization_role' => 'area_manager', 'action' => 'rejected', 'reason' => '=Motivo literal']);
+        $report = new ApprovedOvertimeReport(['period' => 'week', 'year' => 2030, 'week' => 2]);
+        $file = tempnam(sys_get_temp_dir(), 'report-statuses-');
+        try {
+            file_put_contents($file, Excel::raw(new ApprovedOvertimeExport($report), \Maatwebsite\Excel\Excel::XLSX));
+            $book = IOFactory::load($file);
+            $sheet = $book->getActiveSheet();
+            $this->assertSame(6, $sheet->getHighestDataRow());
+            $this->assertSame('Estado', $sheet->getCell('N1')->getValue());
+            $this->assertSame(array_values(Request::STATUS_LABELS), array_column($sheet->rangeToArray('N2:N6'), 0));
+            $this->assertSame('R', $sheet->getHighestDataColumn());
+            $this->assertSame([[
+                'Solicitud', 'Tipo', 'Nómina', 'Empleado', 'Área de la solicitud', 'Grupo / Línea',
+                'Fecha de horas extra', 'Año ISO', 'Semana ISO', 'Horas', 'Justificación', 'Solicitante',
+                'Aprobación final', 'Estado', 'Fecha de registro', 'Última actualización', 'Vencimiento', 'Situación del plazo',
+            ]], $sheet->rangeToArray('A1:R1'));
+            $this->assertSame('En plazo', $sheet->getCell('R2')->getValue());
+            $this->assertNotNull($sheet->getCell('O6')->getValue());
+            $this->assertNotNull($sheet->getCell('P6')->getValue());
+            $this->assertNotNull($sheet->getCell('Q6')->getValue());
+            $this->assertSame('dd/mm/yyyy hh:mm', $sheet->getStyle('Q6')->getNumberFormat()->getFormatCode());
+            $this->assertNull($sheet->getCell('M6')->getValue());
+            $this->assertSame('A2', $sheet->getFreezePane());
+            $this->assertSame('A1:R6', $sheet->getAutoFilter()->getRange());
+            $book->disconnectWorksheets();
+        } finally {
+            unlink($file);
+            $this->travelBack();
+        }
+    }
+
     public function test_deadline_tracks_earliest_overtime_day_and_updates_when_days_change(): void
     {
         $request = $this->request('pending_area_manager', '2030-01-10');
-        $this->assertSame('2030-01-10 00:00:00', $request->expires_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2030-01-15 00:00:00', $request->expires_at->format('Y-m-d H:i:s'));
         $earlier = $request->days()->create(['day_date' => '2030-01-08', 'hours' => 2]);
-        $this->assertSame('2030-01-08', $request->fresh()->expires_at->toDateString());
+        $this->assertSame('2030-01-15', $request->fresh()->expires_at->toDateString());
         $earlier->update(['day_date' => '2030-01-09']);
-        $this->assertSame('2030-01-09', $request->fresh()->expires_at->toDateString());
+        $this->assertSame('2030-01-15', $request->fresh()->expires_at->toDateString());
         $earlier->delete();
-        $this->assertSame('2030-01-10', $request->fresh()->expires_at->toDateString());
+        $this->assertSame('2030-01-15', $request->fresh()->expires_at->toDateString());
+    }
+
+    public function test_deadline_handles_iso_week_and_year_boundaries(): void
+    {
+        foreach (['2026-11-02' => '2026-11-10', '2026-11-08' => '2026-11-10', '2026-12-31' => '2027-01-05'] as $date => $expected) {
+            $request = $this->request('pending_area_manager', $date);
+            $this->assertSame($expected, $request->expires_at->toDateString());
+        }
     }
 
     public function test_alert_boundaries_and_query_scopes_agree_without_changing_status(): void
     {
         $request = $this->request('pending_area_manager', '2030-01-10');
-        $this->travelTo(Carbon::parse('2030-01-04 23:59:59'));
+        $this->travelTo(Carbon::parse('2030-01-09 23:59:59'));
         $this->assertNull($request->expirationAlert());
-        $this->travelTo(Carbon::parse('2030-01-05 00:00:00'));
+        $this->travelTo(Carbon::parse('2030-01-10 00:00:00'));
         $this->assertSame('soon', $request->expirationAlert());
         $this->assertSame(1, Request::expiringSoon()->count());
         $this->assertSame(0, Request::overdue()->count());
-        $this->travelTo(Carbon::parse('2030-01-10 00:00:00'));
+        $this->travelTo(Carbon::parse('2030-01-15 00:00:00'));
         $this->assertSame('overdue', $request->expirationAlert());
         $this->assertSame(0, Request::expiringSoon()->count());
         $this->assertSame(1, Request::overdue()->count());
@@ -279,7 +328,7 @@ class ReportsAndExpirationTest extends TestCase
     public function test_overdue_alerts_are_visible_and_do_not_block_any_approval_stage(): void
     {
         $request = $this->request('pending_area_manager', '2030-01-10');
-        $this->travelTo(Carbon::parse('2030-01-11 12:00:00'));
+        $this->travelTo(Carbon::parse('2030-01-16 12:00:00'));
         Livewire::actingAs($request->employee, 'web')->test(RequestList::class)->set('deadline', 'overdue')->assertSee('Vencida');
         Livewire::actingAs($request->employee, 'web')->test(ApprovalShow::class, ['request' => $request])->assertSee('Vencida');
         foreach (['area_manager', 'hr_manager', 'plant_manager'] as $role) {
@@ -301,7 +350,9 @@ class ReportsAndExpirationTest extends TestCase
         $migration->up();
         $alignment = require database_path('migrations/2026_09_29_130000_align_request_deadlines_with_overtime.php');
         $alignment->up();
-        $this->assertSame('2030-01-08 00:00:00', $request->fresh()->expires_at->format('Y-m-d H:i:s'));
+        $tuesday = require database_path('migrations/2026_10_23_000001_move_request_deadlines_to_following_tuesday.php');
+        $tuesday->up();
+        $this->assertSame('2030-01-15 00:00:00', $request->fresh()->expires_at->format('Y-m-d H:i:s'));
         $this->assertSame('pending_hr_manager', $request->fresh()->status);
     }
 }
