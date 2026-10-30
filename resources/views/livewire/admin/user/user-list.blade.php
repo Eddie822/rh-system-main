@@ -4,6 +4,24 @@
         <p role="alert" class="p-3 mb-4 text-red-800 rounded-lg bg-red-50">{{ session('error') }}</p>
     @endif
 
+    @if ($deletionSummary)
+        <p role="status" class="p-3 mb-3 text-green-800 rounded-lg bg-green-50">{{ $deletionSummary }}</p>
+    @endif
+    @if ($deletionBlocked)
+        <ul role="alert" class="p-3 mb-3 text-sm rounded-lg text-amber-800 bg-amber-50">
+            @foreach ($deletionBlocked as $message)<li>{{ $message }}</li>@endforeach
+        </ul>
+    @endif
+    <x-input-error for="selected" />
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+        <button type="button" wire:click="selectPage" class="px-3 py-2 border rounded-lg dark:text-black">Seleccionar esta página</button>
+        <span class="text-sm dark:text-black">{{ count($selected) }} seleccionado(s)</span>
+        @if ($selected)
+            <button type="button" wire:click="clearSelection" class="px-3 py-2 text-blue-700">Quitar selección</button>
+            <button type="button" data-delete-label="los usuarios seleccionados" data-delete-name="Se eliminarán los usuarios sin historial ni personal a cargo. Se mostrará cuáles se conservaron." onclick="confirmLivewireDeletion(event, this, 'deleteSelected')" wire:loading.attr="disabled" class="px-3 py-2 text-white bg-red-600 rounded-lg">Eliminar seleccionados</button>
+        @endif
+    </div>
+
     {{-- Filtros --}}
     <div class="flex flex-col gap-3 mb-4 sm:flex-row sm:flex-wrap">
         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Buscar por nombre o número de nómina..."
@@ -59,6 +77,7 @@
         <table class="min-w-full bg-white dark:bg-gray-800">
             <thead>
                 <tr class="text-sm text-left text-gray-700 bg-gray-100 dark:bg-gray-900 dark:text-gray-300">
+                    <th class="px-4 py-2"><span class="sr-only">Seleccionar</span></th>
                     <th class="px-4 py-2 cursor-pointer select-none whitespace-nowrap"
                         wire:click="sortBy('employee_number')">
                         No. Nómina
@@ -76,6 +95,7 @@
                     <th class="px-2 PX-4">Puesto</th>
                     <th class="px-4 py-2">Rol</th>
                     <th class="px-4 py-2">Área</th>
+                    <th class="px-4 py-2">Gerente asignado</th>
                     <th class="px-4 py-2">Acciones</th>
                 </tr>
             </thead>
@@ -83,12 +103,14 @@
                 @forelse ($users as $user)
                     <tr wire:key="user-row-{{ $user->id }}"
                         class="text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-4 py-2"><input type="checkbox" wire:model.live="selected" value="{{ $user->id }}" aria-label="Seleccionar nómina {{ $user->employee_number }}" /></td>
                         <td class="px-4 py-2 whitespace-nowrap">{{ $user->employee_number }}</td>
                         <td class="px-4 py-2">{{ $user->name }}</td>
                         <td class="px-4 py-2">{{ $user->surnames }}</td>
                         <td class="px-4 py-2">{{ $user->puesto ?? '—' }}</td>
                         <td class="px-4 py-2">{{ $roles[$user->role] ?? $user->role }}</td>
                         <td class="px-4 py-2">{{ $user->area->name ?? '—' }}</td>
+                        <td class="px-4 py-2">@if ($user->role === 'supervisor'){{ $user->areaManager?->full_name ?? $user->directManager?->full_name ?? 'Sin asignar' }}@else — @endif</td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="flex items-center gap-2">
                                 <a href="{{ route('admin.users.show', $user) }}"
@@ -149,7 +171,7 @@
                     <div>
                         <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->name }}</p>
                         <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->surnames }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">No. Nómina: {{ $user->employee_number }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><label><input type="checkbox" wire:model.live="selected" value="{{ $user->id }}" aria-label="Seleccionar nómina {{ $user->employee_number }}" /> No. Nómina: {{ $user->employee_number }}</label></p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Puesto: {{ $user->puesto ?? '—' }}</p>
                     </div>
                     <span
@@ -158,6 +180,9 @@
                     </span>
                 </div>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ $user->area->name ?? 'Sin área' }}</p>
+                @if ($user->role === 'supervisor')
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Gerente asignado: {{ $user->areaManager?->full_name ?? $user->directManager?->full_name ?? 'Sin asignar' }}</p>
+                @endif
                 <div class="flex gap-2 mt-3">
                     <a href="{{ route('admin.users.show', $user) }}"
                         class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium

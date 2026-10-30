@@ -3,6 +3,7 @@
 namespace App\Livewire\Requests;
 
 use App\Models\Request;
+use App\Models\RequestDay;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -157,16 +158,24 @@ class GroupRequestForm extends Component
             ])->save();
             $request->participants()->sync($employees->pluck('id')->all());
             $request->days()->delete();
+            $now = now();
+            $dayRows = [];
             foreach ($validated['employees'] as $entry) {
+                $employeeId = $employees[$entry['employee_number']]->id;
                 foreach ($entry['days'] as $day) {
-                    $request->days()->create([
-                        'employee_id' => $employees[$entry['employee_number']]->id,
+                    $dayRows[] = [
+                        'request_id' => $request->id,
+                        'employee_id' => $employeeId,
                         'day_date' => $day['day_date'],
                         'day_name' => ucfirst(Carbon::parse($day['day_date'])->locale('es')->dayName),
                         'hours' => $day['hours'],
-                    ]);
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
                 }
             }
+            RequestDay::insert($dayRows);
+            $request->syncExpiration();
         });
 
         session()->flash('success', 'Solicitud grupal guardada correctamente.');
@@ -192,12 +201,18 @@ class GroupRequestForm extends Component
                 })->orderBy('employee_number')->limit(10)->get();
         }
 
+        $selectedNumbers = array_values(array_filter(array_column($this->employees, 'employee_number')));
+        $selectedEmployees = $selectedNumbers === []
+            ? collect()
+            : User::where('role', 'worker')
+                ->whereIn('employee_number', $selectedNumbers)
+                ->get()
+                ->keyBy('employee_number');
+
         return view('livewire.requests.group-request-form', [
             'searchResults' => $results,
-            'selectedEmployees' => User::where('role', 'worker')
-                ->whereIn('employee_number', array_column($this->employees, 'employee_number'))
-                ->get()->keyBy('employee_number'),
-            'hasEmployees' => User::where('role', 'worker')->exists(),
+            'selectedEmployees' => $selectedEmployees,
+            'hasEmployees' => $selectedEmployees->isNotEmpty() || User::where('role', 'worker')->exists(),
         ]);
     }
 }

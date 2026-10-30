@@ -29,6 +29,10 @@ Route::middleware([
 ])->group(function () {
 
     Route::get('/request', function () {
+        if (auth()->user()?->cannot('create', Request::class)) {
+            return redirect()->route('requests.index');
+        }
+
         return view('request');
     })->name('request');
 

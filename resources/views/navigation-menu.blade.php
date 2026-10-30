@@ -5,7 +5,7 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="flex items-center shrink-0">
-                    <a href="{{ route('request') }}">
+                    <a href="{{ auth()->user()->can('create', \App\Models\Request::class) ? route('request') : route('requests.index') }}">
                         <x-application-mark class="block w-auto h-9" />
                     </a>
                 </div>
@@ -13,16 +13,18 @@
                 <!-- Navigation Links -->
                 <div
                     class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex text-stone-800 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                    <x-nav-link href="{{ route('request') }}" :active="request()->routeIs('requests')">
-                        {{ __('Solicitudes') }}
-                    </x-nav-link>
+                    @can('create', \App\Models\Request::class)
+                        <x-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
+                            {{ __('Solicitudes') }}
+                        </x-nav-link>
+                    @endcan
 
-                    <x-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('myrequests')">
+                    <x-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.*')">
                         {{ __('Mis solicitudes') }}
                     </x-nav-link>
 
                     @if (auth()->user()->canApprove())
-                        <x-nav-link href="{{ route('approvals.index') }}">
+                        <x-nav-link href="{{ route('approvals.index') }}" :active="request()->routeIs('approvals.*')">
                             {{ __('Aprobaciones') }}
                         </x-nav-link>
                     @endif
@@ -193,11 +195,13 @@
                     {{ __('Panel de administrador') }}
                 </x-responsive-nav-link>
             @endcan
-            <x-responsive-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
-                {{ __('Solicitudes') }}
-            </x-responsive-nav-link>
+            @can('create', \App\Models\Request::class)
+                <x-responsive-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
+                    {{ __('Solicitudes') }}
+                </x-responsive-nav-link>
+            @endcan
 
-            <x-responsive-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('myrequests')">
+            <x-responsive-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.*')">
                 {{ __('Mis solicitudes') }}
             </x-responsive-nav-link>
 

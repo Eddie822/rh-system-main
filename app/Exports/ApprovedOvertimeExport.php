@@ -39,7 +39,8 @@ class ApprovedOvertimeExport extends DefaultValueBinder implements FromQuery, Sh
     {
         $request = $row->request;
         $employee = $request->is_group ? $row->employee : $request->employee;
-        $approvedAt = $request->authorizations->where('authorization_role', 'plant_manager')->where('action', 'approved')->max('created_at');
+        $approvedAt = $request->status === 'approved'
+            ? $request->authorizations->where('action', 'approved')->max('created_at') : null;
         $date = fn ($value) => $value ? Date::dateTimeToExcel($value) : null;
 
         return [$request->id, $request->is_group ? 'Grupal' : 'Individual', $employee?->employee_number,

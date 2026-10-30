@@ -4,6 +4,7 @@ namespace App\Livewire\Approvals;
 
 use App\Models\Area;
 use App\Models\Request as RequestModel;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -37,6 +38,8 @@ class ApprovalList extends Component
     public function clearFilters()
     {
         $this->reset([
+            'search',
+            'area',
             'week',
             'deadline',
             'from_date',
@@ -54,23 +57,11 @@ class ApprovalList extends Component
         $query = RequestModel::with([
             'employee',
             'area',
-            'days',
-            'participants',
-        ]);
+        ])
+            ->withCount('participants')
+            ->withSum('days', 'hours');
 
-        if ($user->role === 'area_manager') {
-
-            $query->where('status', 'pending_area_manager')
-                ->where('area_id', $user->area_id);
-
-        } elseif ($user->role === 'hr_manager') {
-
-            $query->where('status', 'pending_hr_manager');
-
-        } elseif ($user->role === 'plant_manager') {
-
-            $query->where('status', 'pending_plant_manager');
-        }
+        $query->awaitingDecisionBy($user);
 
         if ($this->search) {
 
@@ -100,18 +91,18 @@ class ApprovalList extends Component
         }
 
         if ($this->from_date) {
-            $query->whereDate(
+            $query->where(
                 'created_at',
                 '>=',
-                $this->from_date
+                Carbon::parse($this->from_date)->startOfDay()
             );
         }
 
         if ($this->to_date) {
-            $query->whereDate(
+            $query->where(
                 'created_at',
                 '<=',
-                $this->to_date
+                Carbon::parse($this->to_date)->endOfDay()
             );
         }
 

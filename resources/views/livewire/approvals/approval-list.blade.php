@@ -90,7 +90,7 @@
                             </td>
 
                             <td class="px-6 py-4">
-                                @if ($request->is_group) <span class="block font-semibold">Grupal ({{ $request->participants->count() }} empleados)</span> @endif
+                                @if ($request->is_group) <span class="block font-semibold">Grupal ({{ $request->participants_count ?? $request->participants->count() }} empleados)</span> @endif
                                 {{ $request->employee->name }}
                                 {{ $request->employee->surnames }}
                             </td>
@@ -116,7 +116,7 @@
                             </td>
 
                             <td class="px-6 py-4">
-                                {{ number_format($request->days->sum('hours'), 2) }}
+                                {{ number_format((float) ($request->days_sum_hours ?? $request->days->sum('hours')), 2) }}
                             </td>
 
                             <td class="px-6 py-4"><x-request-expiration :request="$request" /></td>

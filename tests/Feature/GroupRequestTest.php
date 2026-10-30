@@ -8,6 +8,7 @@ use App\Livewire\Approvals\ApprovalList;
 use App\Livewire\Approvals\ApprovalShow;
 use App\Livewire\Requests\EditRequest;
 use App\Livewire\Requests\GroupRequestForm;
+use App\Livewire\Requests\RequestForm;
 use App\Livewire\Requests\RequestList;
 use App\Models\Area;
 use App\Models\Request;
@@ -130,12 +131,19 @@ class GroupRequestTest extends TestCase
         $this->assertSame($request->id, $first->groupRequests()->first()->id);
     }
 
-    public function test_only_supervisors_with_an_area_can_create_group_requests(): void
+    public function test_only_supervisors_and_managers_can_create_group_requests(): void
     {
-        foreach (['worker', 'area_manager', 'hr_manager', 'plant_manager', 'supervisor'] as $role) {
+        foreach (['worker', 'area_manager', 'supervisor'] as $role) {
             $user = $this->user($role);
             Livewire::actingAs($user, 'web')->test(GroupRequestForm::class)->assertForbidden();
             $this->httpUser($user)->get(route('requests.group.create'))->assertForbidden();
+        }
+
+        $area = Area::create(['name' => 'Operaciones']);
+        foreach (['supervisor', 'area_manager', 'hr_manager', 'plant_manager'] as $role) {
+            $user = $this->user($role, ['area_id' => $area->id]);
+            Livewire::actingAs($user, 'web')->test(GroupRequestForm::class)->assertOk();
+            $this->httpUser($user)->get(route('request'))->assertOk()->assertSeeLivewire(GroupRequestForm::class);
         }
     }
 
@@ -219,15 +227,16 @@ class GroupRequestTest extends TestCase
         $this->assertDatabaseCount('authorizations', 3);
     }
 
-    public function test_wrong_area_and_out_of_order_managers_cannot_approve(): void
+    public function test_wrong_area_cannot_approve_but_hr_can_approve_first(): void
     {
         [$request] = $this->groupRequest();
         $otherArea = Area::create(['name' => 'Other']);
         $manager = $this->user('area_manager', ['area_id' => $otherArea->id]);
         $this->httpUser($manager)->get(route('approvals.show', $request))->assertForbidden();
         $hr = $this->user('hr_manager');
-        Livewire::actingAs($hr, 'web')->test(ApprovalShow::class, ['request' => $request])->call('approve')->assertForbidden();
-        $this->assertDatabaseCount('authorizations', 0);
+        Livewire::actingAs($hr, 'web')->test(ApprovalShow::class, ['request' => $request])->call('approve')->assertRedirect(route('approvals.index'));
+        $this->assertDatabaseCount('authorizations', 1);
+        $this->assertSame('pending_area_manager', $request->fresh()->status);
     }
 
     public function test_area_manager_rejects_the_whole_group_with_a_reason(): void
@@ -322,15 +331,25 @@ class GroupRequestTest extends TestCase
     public function test_individual_requests_keep_their_tracking_and_reject_stale_edits(): void
     {
         $area = Area::create(['name' => 'Existing']);
-        $worker = $this->user(attributes: ['area_id' => $area->id]);
-        $request = Request::create(['employee_id' => $worker->id, 'area_id' => $area->id,
+        $requester = $this->user('hr_manager', ['area_id' => $area->id]);
+        $request = Request::create(['employee_id' => $requester->id, 'area_id' => $area->id,
             'group' => 'A', 'reason' => 'Individual request', 'week' => '1', 'status' => 'pending_area_manager']);
         $request->days()->create(['day_name' => 'Lunes', 'day_date' => now()->addWeek()->toDateString(), 'hours' => 2]);
-        Livewire::actingAs($worker, 'web')->test(RequestList::class)->assertViewHas('requests', fn ($requests) => $requests->first()->days->count() === 1);
-        $form = Livewire::actingAs($worker, 'web')->test(EditRequest::class, ['request' => $request]);
+        Livewire::actingAs($requester, 'web')->test(RequestList::class)->assertViewHas('requests', fn ($requests) => $requests->first()->days->count() === 1);
+        $form = Livewire::actingAs($requester, 'web')->test(EditRequest::class, ['request' => $request]);
         $manager = $this->user('area_manager', ['area_id' => $area->id]);
         app(DecideRequest::class)->handle($request, $manager, 'approved');
         $form->set('reason', 'Changed')->call('save')->assertForbidden();
         $this->assertSame('Individual request', $request->fresh()->reason);
+    }
+
+    public function test_workers_cannot_create_requests_and_are_redirected_to_their_request_list(): void
+    {
+        $area = Area::create(['name' => 'Production']);
+        $worker = $this->user('worker', ['area_id' => $area->id]);
+
+        $this->httpUser($worker)->get(route('request'))->assertRedirect(route('requests.index'));
+        $this->httpUser($worker)->get(route('requests.index'))->assertOk()->assertDontSee(route('request'));
+        Livewire::actingAs($worker, 'web')->test(RequestForm::class)->assertForbidden();
     }
 }

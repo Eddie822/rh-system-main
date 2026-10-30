@@ -47,11 +47,9 @@
             </div>
 
             <p class="mb-4 text-sm text-amber-800 dark:text-amber-200">La solicitud vence el martes a las 00:00 de la semana siguiente a las horas extra solicitadas. Se avisa desde cinco días antes. Las solicitudes vencidas aún pueden aprobarse.</p>
-            @if (auth()->user()->role === 'supervisor')
+            @can('createGroup', \App\Models\Request::class)
                 <livewire:requests.group-request-form />
-            @else
-                <livewire:requests.request-form />
-            @endif
+            @endcan
             <p class="mt-6 text-center">
                 1. El trabajador que cumpla con una Jornada de 48 hrs, solo podrá programar hasta 12 hrs como Descanso
                 Laborado durante la misma semana de pago.

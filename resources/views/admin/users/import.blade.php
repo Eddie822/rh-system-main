@@ -41,7 +41,7 @@
                 </tbody>
             </table>
             <p class="mt-4 text-sm">Los usuarios se crean como empleados sin supervisor ni jefe directo asignado. Los supervisores pueden incluir empleados de cualquier área en sus solicitudes. Los roles de autorización se configuran desde administración.</p>
-            <p class="mt-3 text-sm">Las nóminas existentes o repetidas se omiten sin modificar sus datos. Una fila nueva inválida cancela toda la importación. Hasta 5,000 usuarios y 5 MB por archivo .xlsx. No uses fórmulas.</p>
+            <p class="mt-3 text-sm">Para nóminas existentes se actualizan área y puesto, conservando nombres, contraseñas, roles y jefes asignados. Las nóminas repetidas dentro del archivo se omiten. Una fila inválida cancela todas las altas y actualizaciones. Hasta 5,000 usuarios y 5 MB por archivo .xlsx. No uses fórmulas.</p>
             <p class="mt-3 text-sm">Los archivos grandes pueden tardar varios minutos. Espera a que se descarguen las credenciales antes de volver a enviar el archivo.</p>
         </div>
         <div class="p-5 bg-white rounded-lg dark:bg-gray-800">

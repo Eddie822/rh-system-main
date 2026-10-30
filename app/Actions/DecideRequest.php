@@ -22,20 +22,22 @@ class DecideRequest
 
         DB::transaction(function () use ($request, $user, $action, $reason) {
             $locked = Request::lockForUpdate()->findOrFail($request->id);
+            $user = $user->fresh();
             Gate::forUser($user)->authorize('approve', $locked);
-
-            $locked->authorizations()->create([
-                'user_id' => $user->id,
-                'authorization_role' => $user->role,
-                'action' => $action,
-                'reason' => $action === 'rejected' ? $reason : null,
+            $roles = array_intersect($locked->approvalRolesFor($user), $locked->missingApprovalRoles());
+            foreach ($roles as $role) {
+                $locked->authorizations()->create([
+                    'user_id' => $user->id,
+                    'authorization_role' => $role,
+                    'action' => $action,
+                    'reason' => $action === 'rejected' ? $reason : null,
+                ]);
+            }
+            $missing = $locked->missingApprovalRoles();
+            $locked->update([
+                'assigned_area_manager_id' => $locked->areaApproverId(),
+                'status' => $action === 'rejected' ? 'rejected' : ($missing ? 'pending_'.$missing[0] : 'approved'),
             ]);
-
-            $locked->update(['status' => $action === 'rejected' ? 'rejected' : match ($user->role) {
-                'area_manager' => 'pending_hr_manager',
-                'hr_manager' => 'pending_plant_manager',
-                'plant_manager' => 'approved',
-            }]);
         });
     }
 }

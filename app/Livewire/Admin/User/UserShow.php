@@ -17,12 +17,13 @@ class UserShow extends Component
 
     public function mount(User $user)
     {
-        $this->user = $user;
+        $this->user = $user->loadMissing(['area', 'areaManager', 'directManager']);
     }
 
     public function render()
     {
         abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+        $this->user->loadMissing(['area', 'areaManager', 'directManager']);
 
         $days = fn ($query) => $query->where(fn ($query) => $query
             ->whereNull('employee_id')->orWhere('employee_id', $this->user->id)

@@ -4,6 +4,7 @@ namespace App\Livewire\Approvals;
 
 use App\Actions\DecideRequest;
 use App\Models\Request as RequestModel;
+use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
@@ -52,15 +53,24 @@ class ApprovalShow extends Component
 
     public function render()
     {
-        $this->request->refresh();
+        $this->request->load(['employee', 'area', 'assignedAreaManager', 'authorizations.user']);
         Gate::authorize('view', $this->request);
-        $this->request->load(['employee', 'area', 'authorizations.user']);
         $canSeeGroup = $this->request->employee_id === auth()->id()
             || Gate::allows('viewApproval', $this->request);
         $days = $this->request->days()->with('employee')
             ->when($this->request->is_group && ! $canSeeGroup, fn ($query) => $query->where('employee_id', auth()->id()))
             ->orderBy('employee_id')->orderBy('day_date')->get();
+        $approverId = $this->request->areaApproverId();
+        $areaApprover = ($approverId && $this->request->assigned_area_manager_id === $approverId)
+            ? $this->request->assignedAreaManager
+            : ($approverId ? User::find($approverId) : null);
+        $missingApprovals = $this->request->missingApprovalRoles();
 
-        return view('livewire.approvals.approval-show', compact('days'));
+        return view('livewire.approvals.approval-show', [
+            'days' => $days,
+            'areaApprover' => $areaApprover,
+            'missingApprovals' => $missingApprovals,
+            'myApprovalRoles' => array_intersect($this->request->approvalRolesFor(auth()->user()), $missingApprovals),
+        ]);
     }
 }

@@ -42,7 +42,7 @@ class UserCreate extends Component
         $this->apellido_mat = trim($this->apellido_mat ?? '') ?: null;
         $bossRole = match ($this->role) {
             'worker' => null,
-            'supervisor' => ['area_manager'],
+            'supervisor' => ['area_manager', 'hr_manager', 'plant_manager'],
             'plant_manager' => null,
             default => ['plant_manager'],
         };
@@ -67,11 +67,6 @@ class UserCreate extends Component
         unset($validated['direct_manager_number']);
         if ($bossRole === null) {
             $validated['direct_manager_id'] = null;
-        } elseif ($validated['role'] === 'supervisor') {
-            $boss = User::findOrFail($validated['direct_manager_id']);
-            if ($boss->area_id !== (int) $validated['area_id']) {
-                throw ValidationException::withMessages(['direct_manager_number' => 'El jefe directo debe pertenecer a la misma área.']);
-            }
         }
         if ($validated['role'] === 'plant_manager' && User::where('role', 'plant_manager')->exists()) {
             throw ValidationException::withMessages(['role' => 'Ya existe un gerente de planta.']);
@@ -98,13 +93,17 @@ class UserCreate extends Component
         abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
 
         return view('livewire.admin.user.user-create', [
+            'assignedManager' => trim($this->direct_manager_number) === '' ? null : User::with('area')
+                ->where('employee_number', trim($this->direct_manager_number))
+                ->whereIn('role', $this->role === 'supervisor' ? ['area_manager', 'hr_manager', 'plant_manager'] : ['plant_manager'])
+                ->first(),
             'areas' => Area::orderBy('name')->get(),
             'areaManagers' => User::where('role', 'area_manager')->orderBy('name')->get(),
             'directManagers' => User::whereIn('role', match ($this->role) {
                 'worker' => [],
-                'supervisor' => ['area_manager'],
+                'supervisor' => ['area_manager', 'hr_manager', 'plant_manager'],
                 default => ['plant_manager'],
-            })->when(in_array($this->role, ['worker', 'supervisor'], true) && $this->area_id !== '', fn ($query) => $query->where('area_id', $this->area_id))->orderBy('name')->get(),
+            })->orderBy('name')->get(),
             'roles' => [
                 'worker' => 'Trabajador', 'supervisor' => 'Supervisor',
                 'area_manager' => 'Gerente de Área', 'hr_manager' => 'Gerente de RH',

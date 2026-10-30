@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Request;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +30,7 @@ class DatabaseSeederTest extends TestCase
 
     public function test_seeded_hierarchy_and_request_histories_are_consistent(): void
     {
+        $this->travelTo(Carbon::parse('2030-01-10 12:00:00'));
         $this->seed(DemoDataSeeder::class);
         $this->assertSame(3, User::where('role', 'area_manager')->count());
         $this->assertSame(9, User::where('role', 'supervisor')->count());

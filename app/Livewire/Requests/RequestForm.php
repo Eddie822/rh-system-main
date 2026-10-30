@@ -6,6 +6,7 @@ use App\Models\Request as RequestModel;
 use App\Models\RequestDay;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class RequestForm extends Component
@@ -22,15 +23,17 @@ class RequestForm extends Component
         return [
             'group' => 'required|string|max:255',
             'reason' => 'required|string|max:255',
-            'reason_other' => 'nullable|string|max:255',
+            'reason_other' => $this->reason === 'Otros'
+                ? 'required|string|max:255'
+                : 'nullable|string|max:255',
 
             'employee_number' => $this->reason === 'No. nom a cubrir'
-                ? 'required|digits:4'
-                : 'nullable|digits:4',
+                ? 'required|string|max:50'
+                : 'nullable|string|max:50',
 
             'rows' => 'required|array|min:1',
             'rows.*.day_date' => 'required|date|after:today',
-            'rows.*.hours' => 'required|numeric|min:0|max:12',
+            'rows.*.hours' => 'required|numeric|gt:0|max:12|decimal:0,2',
         ];
     }
 
@@ -43,14 +46,18 @@ class RequestForm extends Component
 
         'rows.*.hours.required' => 'Captura las horas.',
         'rows.*.hours.numeric' => 'Las horas deben ser numéricas.',
-        'rows.*.hours.min' => 'Las horas deben ser mayores o iguales a 0.',
+        'rows.*.hours.gt' => 'Las horas deben ser mayores a 0.',
         'rows.*.hours.max' => 'No puedes capturar más de 12 horas.',
 
-        'employee_number.digits' => 'La nómina debe tener exactamente 4 dígitos.',
+        'reason_other.required' => 'Especifica el motivo.',
+        'employee_number.required' => 'Captura el número de nómina a cubrir.',
+        'employee_number.max' => 'La nómina admite máximo 50 caracteres.',
     ];
 
     public function mount()
     {
+        Gate::authorize('create', RequestModel::class);
+
         $this->rows = [
             [
                 'day_date' => null,
@@ -76,6 +83,8 @@ class RequestForm extends Component
 
     public function submit()
     {
+        Gate::authorize('create', RequestModel::class);
+
         $validated = $this->validate();
 
         // Validar fechas repetidas
@@ -97,10 +106,10 @@ class RequestForm extends Component
             return;
         }
 
-        // Validar misma semana
+        // Validar misma semana y año ISO
         $weeks = collect($validated['rows'])
             ->pluck('day_date')
-            ->map(fn($date) => Carbon::parse($date)->weekOfYear)
+            ->map(fn ($date) => Carbon::parse($date)->format('o-W'))
             ->unique();
 
         if ($weeks->count() > 1) {
@@ -112,19 +121,19 @@ class RequestForm extends Component
             return;
         }
 
-        $week = $weeks->first();
+        $week = Carbon::parse($validated['rows'][0]['day_date'])->isoWeek();
 
         $finalReason = $validated['reason'];
 
         if ($finalReason === 'Otros') {
-            $finalReason = $this->reason_other;
+            $finalReason = trim((string) $this->reason_other);
         }
 
         if (
             $validated['reason'] === 'No. nom a cubrir'
             && !empty($this->employee_number)
         ) {
-            $finalReason .= ' - Nómina: ' . $this->employee_number;
+            $finalReason .= ' - Nómina: ' . trim((string) $this->employee_number);
         }
 
         DB::transaction(function () use (
@@ -140,20 +149,24 @@ class RequestForm extends Component
                 'reason' => $finalReason,
                 'status' => 'pending_area_manager',
                 'week' => $week,
-                'employee_signature' => null,
             ]);
 
-            foreach ($validated['rows'] as $row) {
-
+            $now = now();
+            $dayRows = array_map(function (array $row) use ($requestModel, $now) {
                 $date = Carbon::parse($row['day_date']);
 
-                RequestDay::create([
+                return [
                     'request_id' => $requestModel->id,
                     'day_name' => ucfirst($date->locale('es')->dayName),
                     'day_date' => $row['day_date'],
                     'hours' => $row['hours'],
-                ]);
-            }
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $validated['rows']);
+
+            RequestDay::insert($dayRows);
+            $requestModel->syncExpiration();
         });
 
         session()->flash(
@@ -194,6 +207,8 @@ class RequestForm extends Component
 
     public function render()
     {
+        Gate::authorize('create', RequestModel::class);
+
         return view('livewire/requests.request-form');
     }
 }

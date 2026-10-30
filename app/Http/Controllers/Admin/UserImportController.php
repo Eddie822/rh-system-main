@@ -48,7 +48,7 @@ class UserImportController extends Controller
             $result = $importer->import($request->file('file'));
             $imported = count($result['credentials']);
             $skipped = count($result['skipped']);
-            $summary = "{$imported} usuarios importados; {$skipped} nóminas duplicadas omitidas.";
+            $summary = "{$imported} usuarios nuevos; {$result['updated']} actualizados; {$result['unchanged']} sin cambios; {$skipped} filas repetidas omitidas.";
             if ($imported === 0) {
                 return redirect()->route('admin.users.import.index')->with('success', $summary);
             }

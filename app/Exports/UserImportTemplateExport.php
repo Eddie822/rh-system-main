@@ -65,13 +65,13 @@ class UserImportGuideSheet implements FromArray, ShouldAutoSize, WithHeadings, W
     {
         $rows = [
             ['Area', 'Obligatoria. Se conserva la relación con la tabla de áreas; si el nombre no existe se crea.'],
-            ['num_emp', 'Número de nómina obligatorio, máximo 50 caracteres. Usa texto para conservar ceros iniciales o más de 15 dígitos. Las nóminas duplicadas se omiten.'],
+            ['num_emp', 'Número de nómina obligatorio, máximo 50 caracteres. Usa texto para conservar ceros iniciales o más de 15 dígitos. Las nóminas existentes actualizan área y puesto; las repetidas en el archivo se omiten.'],
             ['apell_pat', 'Apellido paterno obligatorio, máximo 255 caracteres. Se guarda en apellidos_pat.'],
             ['apell_mat', 'Apellido materno opcional, máximo 255 caracteres. Se guarda en apellido_mat; vacío se guarda como null.'],
             ['nombre', 'Nombre o nombres obligatorios, máximo 255 caracteres.'],
             ['Puesto', 'Puesto laboral obligatorio, máximo 255 caracteres. No asigna permisos ni rol.'],
-            ['Acceso', 'Todos se crean como empleados, sin supervisor ni jefe directo. Los roles de autorización se configuran desde administración.'],
-            ['Límites', 'Hasta 5000 usuarios y 5 MB. Sin fórmulas. Una fila nueva inválida cancela toda la importación.'],
+            ['Acceso', 'Los nuevos se crean como empleados. Los existentes conservan nombres, contraseñas, roles y jefes; solo cambian área y puesto.'],
+            ['Límites', 'Hasta 5000 usuarios y 5 MB. Sin fórmulas. Una fila inválida cancela todas las altas y actualizaciones.'],
             ['', 'Áreas disponibles al descargar la plantilla:'],
         ];
         foreach (Area::orderBy('name')->pluck('name') as $name) {

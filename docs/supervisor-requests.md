@@ -1,37 +1,35 @@
-# Supervisor group requests
+# Solicitudes y autorizaciones
 
-## Setup
+## Asignación de gerentes
 
-Apply the additive migration with `sail artisan migrate`.
-Existing individual requests remain individual requests; no data conversion is required.
+En Administración → Usuarios → Crear o Editar, selecciona Supervisor y captura la nómina del gerente asignado. Puede ser un gerente de área, de RH o de planta de cualquier área. La pantalla muestra nombre completo, nómina y área antes de guardar. El supervisor conserva su propia área; `area_manager_id` y `direct_manager_id` apuntan al gerente elegido.
 
-In **Administración → Usuarios → Editar**:
+Los empleados no tienen supervisor fijo. Un supervisor puede incluir empleados de cualquier área en una solicitud grupal, con fechas de la misma semana ISO, hasta siete días por empleado y 12 horas diarias (dos decimales). Se permiten hasta 100 empleados por solicitud.
 
-1. Set the supervisor's role to **Supervisor** and assign their area.
-2. For each worker, select **Supervisor asignado** and save.
+## Autorizaciones en cualquier orden
 
-Supervisors can create group requests from **Solicitudes** or **Mis solicitudes → Nueva solicitud grupal**. All registered workers are selectable, including workers from other areas. Workers are not assigned to a fixed supervisor. A supervisor needs an area; that area determines the first approving area manager, including when a participant belongs to another area.
+Cada solicitud requiere estas tres responsabilidades:
 
-## Workflow
+- Gerente de área asignado al supervisor.
+- Gerente de Recursos Humanos.
+- Gerente de planta.
 
-- One request contains one or more employees, each with their own dates and overtime hours.
-- Each employee may appear once and have up to seven distinct future dates in the same ISO week and year. Hours must be greater than zero, at most 12 per day, with up to two decimal places. The form accepts up to 100 employees per request.
-- The submitting supervisor may edit while the request is pending area-manager approval.
-- The entire group follows **Area manager → HR manager → Plant manager**. Each stage approves or rejects the whole request; rejection requires a reason and ends the flow.
-- Decisions lock the request and write the audit entry and status in one transaction. Duplicate/stale decisions and edits after the first approval are rejected.
-- Included employees see the shared status and approval history through **Mis solicitudes → Ver seguimiento**, with only their own dates and hours. They cannot edit or approve the request. Supervisors and authorized managers see all entries.
-- Worker existence and role are checked again on submission and edit. Changing a worker's area does not remove their access to requests that already include them. Removing them from a still-pending group does remove that request from their tracking.
+Cualquiera puede autorizar primero. Cada quien ve sus solicitudes pendientes aunque falten otras firmas. Si una persona cubre dos responsabilidades (por ejemplo, planta y gerente asignado al supervisor), una aceptación registra ambas, con dos entradas de auditoría. Solo queda aprobada cuando están las tres firmas; un rechazo con motivo termina la solicitud completa.
 
-## Data model
+Los estados `pending_area_manager`, `pending_hr_manager` y `pending_plant_manager` indican la primera firma que falta, pero no limitan el orden. El seguimiento muestra todas las firmas pendientes y cuáles registrará el usuario al aceptar. Una persona no puede repetir su decisión. No se puede editar una solicitud después de la primera firma, incluso si continúa pendiente de gerente de área.
 
-- `users.supervisor_id` was removed by migration `2026_10_22_000001_restructure_employee_details`; workers have no fixed supervisor.
-- `requests.is_group` distinguishes grouped and existing individual requests.
-- For grouped requests, the existing `requests.employee_id` identifies the submitting supervisor; for individual requests it retains its original meaning.
-- `request_employees` links a grouped request to its participants.
-- `request_days.employee_id` identifies whose hours each group entry represents. It stays null for existing individual entries.
-- A group has one status and approval history, so dashboards count it as one request.
+`requests.assigned_area_manager_id` conserva el gerente responsable al crear la solicitud, para que reasignar un supervisor no cambie solicitudes anteriores. Para registros históricos, la migración conserva primero a quien ya autorizó como gerente de área; en su defecto usa la asignación del supervisor o el gerente del área original. Las solicitudes antiguas sin gerente disponible usan el gerente del área cuando se registra.
 
-## Verification
+El supervisor ve a todos los participantes; cada empleado solo ve sus propias fechas y horas. La aprobación y el rechazo afectan al grupo completo y se registran dentro de una transacción con bloqueo de la solicitud.
 
-Run `sail php vendor/bin/phpunit tests/Feature/GroupRequestTest.php`.
-These tests explicitly use SQLite in memory and do not modify the application's database. They cover cross-area participants and role checks, privacy, validation, group editing, approval sequencing, whole-group rejection, stale decisions, transaction rollback, and individual-request compatibility.
+## Eliminación de usuarios
+
+En Administración → Usuarios, marca las casillas o usa Seleccionar esta página. La selección puede incluir usuarios de varias páginas (máximo 500). Eliminar seleccionados pide confirmación y muestra cuántos se eliminaron y qué nóminas se conservaron. Se protege la propia cuenta, el historial de solicitudes y autorizaciones, y los responsables con personal o solicitudes asignadas. Los mismos criterios se usan al eliminar individualmente.
+
+## Verificación
+
+```bash
+./vendor/bin/sail artisan test tests/Feature/FlexibleApprovalsTest.php tests/Feature/GroupRequestTest.php tests/Feature/UserAdministrationTest.php tests/Feature/RequestApproverMigrationTest.php
+```
+
+Las pruebas usan SQLite en memoria. Cubren los seis órdenes de autorización, firmas dobles, rechazo completo, privacidad, edición posterior a firmas, asignación entre áreas, eliminación múltiple y conservación del historial.

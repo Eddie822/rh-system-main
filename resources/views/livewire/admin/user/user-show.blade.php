@@ -1,7 +1,7 @@
 <div class="max-w-3xl p-4 mx-auto sm:p-6">
 
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h1 class="text-xl font-semibold text-gray-100 dark:text-gray-700">
             Detalle de usuario
         </h1>
         <a href="{{ route('admin.users.index') }}"
@@ -57,9 +57,9 @@
                 <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $user->puesto ?? '—' }}</dd>
             </div>
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Gerente de área</dt>
+                <dt class="text-gray-500 dark:text-gray-400">Gerente asignado para autorización de área</dt>
                 <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ $user->areaManager ? $user->areaManager->name . ' ' . $user->areaManager->surnames : '—' }}
+                    {{ $user->areaManager?->full_name ?? '—' }} @if ($user->areaManager) · Nómina {{ $user->areaManager->employee_number }} @endif
                 </dd>
             </div>
             <div>

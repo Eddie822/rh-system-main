@@ -143,13 +143,21 @@
 
         @if (! in_array($role, ['worker', 'plant_manager'], true))
             <div>
-                <label for="direct_manager_number" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Nómina del jefe directo</label>
-                <input type="text" id="direct_manager_number" wire:model="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100" />
+                <label for="direct_manager_number" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ $role === 'supervisor' ? 'Nómina del gerente asignado' : 'Nómina del jefe directo' }}</label>
+                <input type="text" id="direct_manager_number" wire:model.live.debounce.400ms="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:text-gray-100" />
                 <datalist id="direct-manager-options">
                     @foreach ($directManagers as $manager)
                         <option value="{{ $manager->employee_number }}">{{ $manager->employee_number }} — {{ $manager->name }} {{ $manager->surnames }}</option>
                     @endforeach
                 </datalist>
+
+                @if ($assignedManager)
+                    <p role="status" class="mt-2 text-sm text-green-700 dark:text-green-300">
+                        Se asignará a {{ $assignedManager->full_name }} · Nómina {{ $assignedManager->employee_number }} · {{ $assignedManager->area?->name ?? 'Sin área' }}.
+                    </p>
+                @elseif (trim($direct_manager_number) !== '')
+                    <p role="status" class="mt-2 text-sm text-red-600">No se encontró un gerente válido con esa nómina.</p>
+                @endif
                 @error('direct_manager_number') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
             </div>
         @endif

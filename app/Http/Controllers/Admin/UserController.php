@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\DeleteUsers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
@@ -31,27 +30,10 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        Gate::authorize('deleteUsers');
-
-        if ($user->is(auth()->user())) {
-            return back()->with('error', 'No puedes eliminar tu propia cuenta desde el panel.');
+        $result = app(DeleteUsers::class)->handle([$user->id]);
+        if ($result['blocked']) {
+            return back()->with('error', $result['blocked'][0]);
         }
-
-        $hasHistory = $user->requests()->exists()
-            || $user->groupRequests()->exists()
-            || $user->authorizations()->exists()
-            || DB::table('request_days')->where('employee_id', $user->id)->exists();
-        $hasReports = User::where('area_manager_id', $user->id)
-            ->orWhere('direct_manager_id', $user->id)
-            ->exists();
-
-        if ($hasHistory || $hasReports) {
-            return back()->with('error', 'No se puede eliminar este usuario porque tiene solicitudes, autorizaciones o personal a cargo.');
-        }
-
-        $user->deleteProfilePhoto();
-        $user->tokens()->delete();
-        $user->delete();
 
         return redirect()->route('admin.users.index')->with('deleted', 'Usuario eliminado correctamente.');
     }

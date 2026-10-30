@@ -317,6 +317,16 @@
             @endforelse
         </div>
 
+        <section class="p-6 bg-white rounded-lg shadow dark:bg-gray-800 dark:text-white">
+            <h2 class="font-semibold">Responsable de autorización de área</h2>
+            <p class="mt-2">{{ $areaApprover?->full_name ?? 'Sin gerente asignado' }}
+                @if ($areaApprover) · Nómina {{ $areaApprover->employee_number }} @endif
+            </p>
+            @if (! in_array($request->status, ['approved', 'rejected'], true))
+                <p class="mt-2 text-sm">Faltan: {{ collect($missingApprovals)->map(fn ($role) => ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role])->join(', ') }}. Las autorizaciones pueden registrarse en cualquier orden.</p>
+            @endif
+        </section>
+
         {{-- Acciones --}}
         @if (auth()->user()->can('approve', $request))
             <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
@@ -325,6 +335,7 @@
                     Acciones
                 </h2>
 
+                <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Tu decisión registrará: {{ collect($myApprovalRoles)->map(fn ($role) => ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role])->join(' y ') }}.</p>
                 <div class="flex flex-col gap-3 sm:flex-row">
 
                     <button wire:click="approve" wire:loading.attr="disabled"

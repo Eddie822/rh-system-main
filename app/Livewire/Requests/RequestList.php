@@ -3,6 +3,7 @@
 namespace App\Livewire\Requests;
 
 use App\Models\Request;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -39,9 +40,12 @@ class RequestList extends Component
 
     public function render()
     {
+        $userId = auth()->id();
+
         $requests = Request::with(['days' => fn ($query) => $query->where(fn ($query) => $query
-            ->whereNull('employee_id')->orWhere('employee_id', auth()->id())
-            ->orWhereHas('request', fn ($query) => $query->where('employee_id', auth()->id())))])
+            ->whereNull('employee_id')->orWhere('employee_id', $userId)
+            ->orWhereHas('request', fn ($query) => $query->where('employee_id', $userId)))])
+            ->withExists('authorizations')
             ->forEmployee(auth()->user())
             ->when($this->deadline === 'soon', fn ($query) => $query->expiringSoon())
             ->when($this->deadline === 'overdue', fn ($query) => $query->overdue())
@@ -55,19 +59,11 @@ class RequestList extends Component
             })
 
             ->when($this->from_date, function ($query) {
-                $query->whereDate(
-                    'created_at',
-                    '>=',
-                    $this->from_date
-                );
+                $query->where('created_at', '>=', Carbon::parse($this->from_date)->startOfDay());
             })
 
             ->when($this->to_date, function ($query) {
-                $query->whereDate(
-                    'created_at',
-                    '<=',
-                    $this->to_date
-                );
+                $query->where('created_at', '<=', Carbon::parse($this->to_date)->endOfDay());
             })
 
             ->latest()

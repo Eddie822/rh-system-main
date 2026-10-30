@@ -37,13 +37,6 @@ class ApprovalController extends Controller
      */
     public function show(RequestModel $approval)
     {
-        $approval->load([
-            'employee',
-            'area',
-            'days',
-            'authorizations.user',
-        ]);
-
         return view(
             'approval.show',
             [

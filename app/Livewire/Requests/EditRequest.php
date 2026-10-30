@@ -94,7 +94,7 @@ class EditRequest extends Component
         // Misma semana
         $weeks = collect($validated['rows'])
             ->pluck('day_date')
-            ->map(fn ($date) => Carbon::parse($date)->weekOfYear)
+            ->map(fn ($date) => Carbon::parse($date)->format('o-W'))
             ->unique();
 
         if ($weeks->count() > 1) {
@@ -107,7 +107,7 @@ class EditRequest extends Component
             return;
         }
 
-        $week = $weeks->first();
+        $week = Carbon::parse($validated['rows'][0]['day_date'])->isoWeek();
 
         DB::transaction(function () use ($validated, $week) {
 
@@ -123,19 +123,22 @@ class EditRequest extends Component
 
             $this->request->days()->delete();
 
-            foreach ($validated['rows'] as $row) {
-
+            $now = now();
+            $dayRows = array_map(function (array $row) use ($now) {
                 $date = Carbon::parse($row['day_date']);
 
-                RequestDay::create([
+                return [
                     'request_id' => $this->request->id,
-                    'day_name' => ucfirst(
-                        $date->locale('es')->dayName
-                    ),
+                    'day_name' => ucfirst($date->locale('es')->dayName),
                     'day_date' => $row['day_date'],
                     'hours' => $row['hours'],
-                ]);
-            }
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $validated['rows']);
+
+            RequestDay::insert($dayRows);
+            $this->request->syncExpiration();
         });
 
         session()->flash(

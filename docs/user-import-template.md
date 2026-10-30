@@ -14,13 +14,13 @@ Descarga la plantilla en Administración → Usuarios → Importar usuarios. Lle
 - `nombre`: nombre o nombres obligatorios.
 - `Puesto`: puesto laboral obligatorio; sustituye al grupo del empleado. No asigna un rol de autorización. Los campos de texto excepto nómina admiten hasta 255 caracteres.
 
-Todos los usuarios nuevos se crean con rol Empleado, sin supervisor ni jefe directo. Configura los roles Supervisor, Gerente de área, Gerente de RH y Gerente de planta desde la administración de usuarios. Los supervisores pueden incluir empleados de cualquier área; la aprobación corresponde al área del supervisor que registra la solicitud.
+Todos los usuarios nuevos se crean con rol Empleado, sin supervisor ni jefe directo. Configura los roles Supervisor, Gerente de área, Gerente de RH y Gerente de planta desde la administración de usuarios. Los supervisores pueden incluir empleados de cualquier área; la autorización de área corresponde al gerente asignado al supervisor, aunque pertenezca a otra área. Se permiten las tres autorizaciones en cualquier orden.
 
-Sube el archivo como `.xlsx`, hasta 5 MB y 5,000 usuarios. No incluyas fórmulas. Las nóminas existentes o repetidas se omiten y sus datos no se modifican. Una fila nueva inválida cancela toda la importación, incluidas las áreas nuevas, y muestra su número de fila.
+Sube el archivo como `.xlsx`, hasta 5 MB y 5,000 usuarios. No incluyas fórmulas. Las nóminas existentes actualizan únicamente área y puesto; conservan nombres, apellidos, contraseña, rol y gerente asignado. Las filas repetidas de una nómina se omiten y se procesa solo la primera. Las filas sin cambios se cuentan por separado. Una fila inválida cancela todas las altas y actualizaciones, incluidas las áreas nuevas. Un cambio de área que genere dos gerentes de área en una misma área también cancela la importación.
 
 Al importar se descarga un Excel de credenciales con nómina, nombres, los dos apellidos y una contraseña temporal distinta por usuario. Guarda el archivo: solo se descarga una vez. Cada usuario debe cambiar su contraseña al ingresar. Los archivos grandes pueden tardar varios minutos por la generación de contraseñas individuales; espera la descarga antes de volver a enviar el archivo.
 
-La lista completa se descarga con estas mismas seis columnas. Volver a importarla omite las nóminas existentes; no sirve para actualizar usuarios.
+La lista completa se descarga con estas mismas seis columnas. Volver a importarla permite actualizar área y puesto. Solo los usuarios nuevos reciben contraseñas temporales y aparecen en el archivo de credenciales; si solo hay actualizaciones se muestra el resumen sin descargar contraseñas.
 
 ## Migración de datos existentes
 

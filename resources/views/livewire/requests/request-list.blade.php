@@ -7,9 +7,9 @@
     @if (session('success'))
         <p role="status" class="p-4 mb-4 text-green-800 bg-green-50 rounded-lg">{{ session('success') }}</p>
     @endif
-    @if (auth()->user()->role === 'supervisor')
+    @can('createGroup', \App\Models\Request::class)
         <a href="{{ route('requests.group.create') }}" class="inline-block px-4 py-2 mb-4 text-white bg-blue-600 rounded-lg">Nueva solicitud grupal</a>
-    @endif
+    @endcan
     {{-- Filtros --}}
     <div class="p-4 mb-6 bg-white rounded-lg shadow dark:bg-gray-900">
 

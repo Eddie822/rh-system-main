@@ -100,6 +100,11 @@ class UserEdit extends Component
 
     public function updated($propertyName)
     {
+        if ($propertyName === 'direct_manager_number') {
+            $this->resetValidation('direct_manager_number');
+
+            return;
+        }
         $this->validateOnly($propertyName);
     }
 
@@ -133,7 +138,7 @@ class UserEdit extends Component
 
         $expectedBossRole = match ($validated['role']) {
             'worker' => null,
-            'supervisor' => ['area_manager'],
+            'supervisor' => ['area_manager', 'hr_manager', 'plant_manager'],
             'plant_manager' => null,
             default => ['plant_manager'],
         };
@@ -144,8 +149,8 @@ class UserEdit extends Component
             $bossId = $validated['direct_manager_id'];
             if ($bossId) {
                 $boss = User::findOrFail($bossId);
-                if (! in_array($boss->role, $expectedBossRole, true) || ($validated['role'] === 'supervisor' && $boss->area_id !== $validated['area_id'])) {
-                    throw ValidationException::withMessages(['direct_manager_number' => 'El jefe directo debe tener el rol correcto y pertenecer a la misma área.']);
+                if (! in_array($boss->role, $expectedBossRole, true)) {
+                    throw ValidationException::withMessages(['direct_manager_number' => 'La nómina debe corresponder a un gerente de área, RH o planta para un supervisor.']);
                 }
             }
             $validated['direct_manager_id'] = $bossId;
@@ -168,6 +173,10 @@ class UserEdit extends Component
         abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
 
         return view('livewire.admin.user.user-edit', [
+            'assignedManager' => trim($this->direct_manager_number) === '' ? null : User::with('area')
+                ->where('employee_number', trim($this->direct_manager_number))
+                ->whereIn('role', $this->role === 'supervisor' ? ['area_manager', 'hr_manager', 'plant_manager'] : ['plant_manager'])
+                ->first(),
             'areas' => Area::orderBy('name')->get(),
             'areaManagers' => User::where('id', '!=', $this->user->id)
                 ->where('role', 'area_manager')
@@ -176,7 +185,7 @@ class UserEdit extends Component
             'directManagers' => User::where('id', '!=', $this->user->id)
                 ->whereIn('role', match ($this->role) {
                     'worker' => [],
-                    'supervisor' => ['area_manager'],
+                    'supervisor' => ['area_manager', 'hr_manager', 'plant_manager'],
                     default => ['plant_manager'],
                 })->orderBy('name')->get(),
             'roles' => [

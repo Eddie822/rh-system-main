@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Area;
 use App\Models\Authorization;
 use App\Models\Request as RequestModel;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 
@@ -16,9 +17,12 @@ class Dashboard extends Component
 
     public string $dateTo = '';
 
+    private ?array $cachedDashboardData = null;
+
     public function updated(string $property): void
     {
         if (in_array($property, ['areaId', 'dateFrom', 'dateTo'], true)) {
+            $this->cachedDashboardData = null;
             $this->dispatch('dashboard-data-updated', data: $this->dashboardData());
         }
     }
@@ -26,6 +30,7 @@ class Dashboard extends Component
     public function resetFilters(): void
     {
         $this->reset('areaId', 'dateFrom', 'dateTo');
+        $this->cachedDashboardData = null;
         $this->dispatch('dashboard-data-updated', data: $this->dashboardData());
     }
 
@@ -46,8 +51,8 @@ class Dashboard extends Component
     {
         return $query
             ->when($this->areaId !== '' && ctype_digit($this->areaId), fn (Builder $query) => $query->where('area_id', (int) $this->areaId))
-            ->when($this->validDate($this->dateFrom), fn (Builder $query) => $query->whereDate('created_at', '>=', $this->dateFrom))
-            ->when($this->validDate($this->dateTo), fn (Builder $query) => $query->whereDate('created_at', '<=', $this->dateTo));
+            ->when($this->validDate($this->dateFrom), fn (Builder $query) => $query->where('created_at', '>=', Carbon::parse($this->dateFrom)->startOfDay()))
+            ->when($this->validDate($this->dateTo), fn (Builder $query) => $query->where('created_at', '<=', Carbon::parse($this->dateTo)->endOfDay()));
     }
 
     private function validDate(string $date): bool
@@ -63,6 +68,10 @@ class Dashboard extends Component
 
     private function dashboardData(): array
     {
+        if ($this->cachedDashboardData !== null) {
+            return $this->cachedDashboardData;
+        }
+
         $counts = $this->filteredRequests(RequestModel::query())
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
@@ -91,7 +100,7 @@ class Dashboard extends Component
             ];
         }
 
-        return [
+        return $this->cachedDashboardData = [
             'indicators' => [
                 'approved' => (int) ($counts['approved'] ?? 0),
                 'rejected' => (int) ($counts['rejected'] ?? 0),

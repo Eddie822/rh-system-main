@@ -16,6 +16,7 @@ class Request extends Model
 
     protected $fillable = [
         'employee_id',
+        'assigned_area_manager_id',
         'is_group',
         'area_id',
         'group',
@@ -45,6 +46,85 @@ class Request extends Model
     public function getStatusLabelAttribute(): string
     {
         return self::STATUS_LABELS[$this->status] ?? $this->status;
+    }
+
+    public const APPROVAL_ROLES = ['area_manager', 'hr_manager', 'plant_manager'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $request) {
+            $request->assigned_area_manager_id ??= $request->areaApproverId();
+        });
+    }
+
+    public function assignedAreaManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_area_manager_id');
+    }
+
+    public function areaApproverId(): ?int
+    {
+        if ($this->assigned_area_manager_id) {
+            return $this->assigned_area_manager_id;
+        }
+        $creator = $this->employee;
+        if ($creator?->role === 'supervisor' && ($creator->area_manager_id || $creator->direct_manager_id)) {
+            return $creator->area_manager_id ?? $creator->direct_manager_id;
+        }
+
+        return $this->area_id ? User::where('role', 'area_manager')->where('area_id', $this->area_id)->value('id') : null;
+    }
+
+    public function approvalRolesFor(User $user): array
+    {
+        if (! $user->canApprove()) {
+            return [];
+        }
+        $roles = $this->areaApproverId() === $user->id ? ['area_manager'] : [];
+        if (in_array($user->role, ['hr_manager', 'plant_manager'], true)) {
+            $roles[] = $user->role;
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    public function missingApprovalRoles(): array
+    {
+        $approvedRoles = $this->relationLoaded('authorizations')
+            ? $this->authorizations->where('action', 'approved')->pluck('authorization_role')->all()
+            : $this->authorizations()->where('action', 'approved')->pluck('authorization_role')->all();
+
+        return array_values(array_diff(self::APPROVAL_ROLES, $approvedRoles));
+    }
+
+    public function scopeForAreaApprover(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $query) use ($user) {
+            $query->where('assigned_area_manager_id', $user->id)
+                ->orWhere(function (Builder $query) use ($user) {
+                    $query->whereNull('assigned_area_manager_id')->where(function (Builder $query) use ($user) {
+                        $query->whereHas('employee', fn (Builder $query) => $query->where('role', 'supervisor')
+                            ->where(fn (Builder $query) => $query->where('area_manager_id', $user->id)
+                                ->orWhere(fn (Builder $query) => $query->whereNull('area_manager_id')->where('direct_manager_id', $user->id))));
+                        if ($user->role === 'area_manager' && $user->area_id !== null) {
+                            $query->orWhere(fn (Builder $query) => $query->where('area_id', $user->area_id)
+                                ->whereDoesntHave('employee', fn (Builder $query) => $query->where('role', 'supervisor')
+                                    ->where(fn (Builder $query) => $query->whereNotNull('area_manager_id')->orWhereNotNull('direct_manager_id'))));
+                        }
+                    });
+                });
+        });
+    }
+
+    public function scopeAwaitingDecisionBy(Builder $query, User $user): Builder
+    {
+        return $query->pending()->where(function (Builder $query) use ($user) {
+            $query->where(fn (Builder $query) => $query->forAreaApprover($user)
+                ->whereDoesntHave('authorizations', fn (Builder $query) => $query->where('authorization_role', 'area_manager')->where('action', 'approved')));
+            if (in_array($user->role, ['hr_manager', 'plant_manager'], true)) {
+                $query->orWhereDoesntHave('authorizations', fn (Builder $query) => $query->where('authorization_role', $user->role)->where('action', 'approved'));
+            }
+        });
     }
 
     public function employee(): BelongsTo

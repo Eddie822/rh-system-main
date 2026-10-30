@@ -78,8 +78,8 @@
                                 {{ __('Perfil') }}
                             </x-dropdown-link>
 
-                            <x-dropdown-link href="{{ route('request') }}">
-                                {{ __('Solicitudes') }}
+                            <x-dropdown-link href="{{ auth()->user()->can('create', \App\Models\Request::class) ? route('request') : route('requests.index') }}">
+                                {{ auth()->user()->can('create', \App\Models\Request::class) ? __('Solicitudes') : __('Mis solicitudes') }}
                             </x-dropdown-link>
 
                             @if (Laravel\Jetstream\Jetstream::hasApiFeatures())

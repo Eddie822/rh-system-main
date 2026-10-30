@@ -2,7 +2,7 @@
     <div>
         <h1 class="text-2xl font-semibold">{{ $request ? 'Editar solicitud grupal #'.$request->id : 'Nueva solicitud grupal' }}</h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Incluye empleados de cualquier área, con sus fechas y horas extra. Todas las fechas deben corresponder a la misma semana.</p>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">La solicitud completa pasa por el gerente de tu área → RH → Gerente de Planta. Un rechazo aplica a todo el grupo.</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">La solicitud requiere al gerente asignado al supervisor, RH y Gerente de Planta, en cualquier orden. Un rechazo aplica a todo el grupo.</p>
     </div>
 
     @if (! $hasEmployees)

@@ -88,6 +88,11 @@ class ApprovedOvertime extends Component
         $filters = $valid ? $validation->validated() : null;
         $report = $valid ? new ApprovedOvertimeReport($filters) : null;
         $query = $report?->query();
+        $totals = $query
+            ? (clone $query)->reorder()->toBase()
+                ->selectRaw('COALESCE(SUM(hours), 0) as total_hours, COUNT(DISTINCT request_id) as request_count')
+                ->first()
+            : null;
 
         return view('livewire.admin.reports.approved-overtime', [
             'areas' => Area::orderBy('name')->get(),
@@ -96,8 +101,8 @@ class ApprovedOvertime extends Component
             'rows' => $query
                 ? (clone $query)->paginate(25)
                 : new LengthAwarePaginator([], 0, 25, 1),
-            'hours' => $query ? (clone $query)->sum('hours') : 0,
-            'requestCount' => $query ? (clone $query)->distinct()->count('request_id') : 0,
+            'hours' => $totals ? (float) $totals->total_hours : 0,
+            'requestCount' => $totals ? (int) $totals->request_count : 0,
             'exportUrl' => $valid ? route('admin.reports.export', $filters) : null,
         ]);
     }

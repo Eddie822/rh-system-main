@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Admin\User;
 
+use App\Actions\DeleteUsers;
 use App\Models\Area;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -14,6 +16,12 @@ class UserList extends Component
 
     #[Url(history: true)]
     public string $search = '';
+
+    public array $selected = [];
+
+    public array $deletionBlocked = [];
+
+    public string $deletionSummary = '';
 
     #[Url(history: true)]
     public string $roleFilter = '';
@@ -44,6 +52,9 @@ class UserList extends Component
 
     public function sortBy(string $field)
     {
+        if (! in_array($field, ['name', 'employee_number'], true)) {
+            return;
+        }
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -58,12 +69,12 @@ class UserList extends Component
         $this->resetPage();
     }
 
-    public function render()
+    private function baseUsersQuery()
     {
-        abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+        $sortField = in_array($this->sortField, ['name', 'employee_number'], true) ? $this->sortField : 'name';
+        $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
 
-        $users = User::query()
-            ->with('area')
+        return User::query()
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%'.$this->search.'%')
@@ -76,8 +87,50 @@ class UserList extends Component
             )
             ->when($this->areaFilter, fn ($query) => $query->where('area_id', $this->areaFilter)
             )
-            ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate(15);
+            ->orderBy($sortField, $sortDirection);
+    }
+
+    private function usersQuery()
+    {
+        return $this->baseUsersQuery()
+            ->with(['area', 'areaManager', 'directManager']);
+    }
+
+    public function selectPage(): void
+    {
+        Gate::authorize('deleteUsers');
+        $ids = $this->baseUsersQuery()
+            ->forPage($this->getPage(), 15)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+        $this->selected = array_values(array_unique(array_merge($this->selected, $ids)));
+    }
+
+    public function clearSelection(): void
+    {
+        $this->selected = [];
+        $this->resetValidation('selected');
+    }
+
+    public function deleteSelected(): void
+    {
+        Gate::authorize('deleteUsers');
+        $this->validate([
+            'selected' => ['required', 'array', 'min:1', 'max:500'],
+            'selected.*' => ['required', 'integer', 'distinct', 'exists:users,id'],
+        ]);
+        $result = app(DeleteUsers::class)->handle($this->selected);
+        $this->deletionBlocked = $result['blocked'];
+        $this->deletionSummary = $result['deleted'].' usuario(s) eliminado(s); '.count($result['blocked']).' conservado(s).';
+        $this->selected = [];
+        $this->resetPage();
+    }
+
+    public function render()
+    {
+        abort_unless(auth()->user()?->canAccessAdminPanel(), 403);
+        $users = $this->usersQuery()->paginate(15);
 
         return view('livewire.admin.user.user-list', [
             'users' => $users,

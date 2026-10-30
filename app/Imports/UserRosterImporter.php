@@ -48,7 +48,6 @@ class UserRosterImporter
             $book->disconnectWorksheets();
         }
 
-        $existing = User::pluck('employee_number')->flip();
         $seen = [];
         $skipped = [];
         $prepared = [];
@@ -75,12 +74,12 @@ class UserRosterImporter
             }
             if ($employeeNumber === '' || mb_strlen($employeeNumber) > 50) {
                 $errors[] = "Fila {$number}: num_emp es obligatorio y admite máximo 50 caracteres.";
-            } elseif (isset($seen[$employeeNumber]) || $existing->has($employeeNumber)) {
+            } elseif (isset($seen[mb_strtolower($employeeNumber)])) {
                 $skipped[] = ['row' => $number, 'employee_number' => $employeeNumber];
 
                 continue;
             }
-            $seen[$employeeNumber] = true;
+            $seen[mb_strtolower($employeeNumber)] = true;
             foreach (['Area' => $area, 'apell_pat' => $paternal, 'nombre' => $name, 'Puesto' => $position] as $field => $value) {
                 if ($value === '' || mb_strlen($value) > 255) {
                     $errors[] = "Fila {$number}: {$field} es obligatorio y admite máximo 255 caracteres.";
@@ -96,35 +95,84 @@ class UserRosterImporter
         }
         if ($errors) {
             throw ValidationException::withMessages(['file' => array_merge(
-                ['La importación se canceló. No se creó ningún usuario.'], array_slice($errors, 0, 50)
+                ['La importación se canceló. No se creó ni actualizó ningún usuario.'], array_slice($errors, 0, 50)
             )]);
         }
 
         try {
             return DB::transaction(function () use ($prepared, $skipped) {
                 $areas = Area::all()->keyBy(fn (Area $area) => mb_strtolower(trim($area->name)));
+                $existingUsers = [];
+                $existingByTrimmedZero = [];
+                foreach (User::lockForUpdate()->get() as $existingUser) {
+                    $key = mb_strtolower(trim((string) $existingUser->employee_number));
+                    $existingUsers[$key] = $existingUser;
+                    if (ctype_digit($key)) {
+                        $normalizedDigits = ltrim($key, '0') ?: '0';
+                        $existingByTrimmedZero[$normalizedDigits][] = $existingUser;
+                    }
+                }
+
                 $credentials = [];
+                $updated = 0;
+                $unchanged = 0;
                 foreach ($prepared as $row) {
                     $areaKey = mb_strtolower($row['area']);
                     if (! $areas->has($areaKey)) {
                         $areas->put($areaKey, Area::create(['name' => $row['area']]));
                     }
+                    $targetArea = $areas->get($areaKey);
+                    $lookupKey = mb_strtolower($row['employeeNumber']);
+                    $user = $existingUsers[$lookupKey] ?? null;
+                    if (! $user && ctype_digit($lookupKey)) {
+                        $normalizedDigits = ltrim($lookupKey, '0') ?: '0';
+                        if (isset($existingByTrimmedZero[$normalizedDigits]) && count($existingByTrimmedZero[$normalizedDigits]) === 1) {
+                            $user = $existingByTrimmedZero[$normalizedDigits][0];
+                        }
+                    }
+
+                    if ($user) {
+                        $areaChanged = (int) $user->area_id !== (int) $targetArea->id;
+                        $positionChanged = trim((string) ($user->puesto ?? '')) !== $row['position'];
+                        if ($areaChanged || $positionChanged) {
+                            $user->forceFill([
+                                'area_id' => $targetArea->id,
+                                'puesto' => $row['position'],
+                            ])->save();
+                            $updated++;
+                        } else {
+                            $unchanged++;
+                        }
+
+                        continue;
+                    }
                     $password = Str::random(16);
-                    User::create([
+                    $createdUser = User::create([
                         'employee_number' => $row['employeeNumber'],
                         'name' => $row['name'],
                         'apellidos_pat' => $row['paternal'],
                         'apellido_mat' => $row['maternal'] ?: null,
                         'puesto' => $row['position'],
                         'role' => 'worker',
-                        'area_id' => $areas->get($areaKey)->id,
+                        'area_id' => $targetArea->id,
                         'password' => $password,
                         'must_change_password' => true,
                     ]);
+                    $existingUsers[$lookupKey] = $createdUser;
+                    if (ctype_digit($lookupKey)) {
+                        $normalizedDigits = ltrim($lookupKey, '0') ?: '0';
+                        $existingByTrimmedZero[$normalizedDigits][] = $createdUser;
+                    }
                     $credentials[] = [$row['employeeNumber'], $row['name'], $row['paternal'], $row['maternal'], $password];
                 }
 
-                return ['credentials' => $credentials, 'skipped' => $skipped];
+                $duplicateManagers = User::where('role', 'area_manager')->whereNotNull('area_id')
+                    ->select('area_id')->groupBy('area_id')->havingRaw('COUNT(*) > 1')->exists();
+                if ($duplicateManagers) {
+                    throw ValidationException::withMessages(['file' => 'La importación se canceló: el cambio de área dejaría más de un gerente de área en la misma área. Revisa las asignaciones antes de importar.']);
+                }
+
+                return compact('credentials', 'skipped', 'updated', 'unchanged');
             });
         } catch (QueryException $exception) {
             if (in_array((string) $exception->getCode(), ['23000', '23505', '19'], true)) {

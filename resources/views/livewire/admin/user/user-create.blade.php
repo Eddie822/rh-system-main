@@ -16,10 +16,18 @@
             </select></div>
             <div><x-label for="puesto" value="Puesto" /><x-input id="puesto" wire:model="puesto" class="w-full mt-1" /></div>
             @if (! in_array($role, ['worker', 'plant_manager'], true))
-                <div><x-label for="direct_manager_number" value="Nómina del jefe directo" /><input type="text" id="direct_manager_number" wire:model="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900" @required(in_array($role, ['worker', 'supervisor'], true)) />
+                <div><x-label for="direct_manager_number" :value="$role === 'supervisor' ? 'Nómina del gerente asignado' : 'Nómina del jefe directo'" /><input type="text" id="direct_manager_number" wire:model.live.debounce.400ms="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900" @required(in_array($role, ['worker', 'supervisor'], true)) />
                     <datalist id="direct-manager-options">
                     @foreach ($directManagers as $manager) <option value="{{ $manager->employee_number }}">{{ $manager->employee_number }} — {{ $manager->name }}</option> @endforeach
-                </datalist><x-input-error for="direct_manager_number" /></div>
+                </datalist><x-input-error for="direct_manager_number" />
+                @if ($assignedManager)
+                    <p role="status" class="mt-2 text-sm text-green-700 dark:text-green-300">
+                        Se asignará a {{ $assignedManager->full_name }} · Nómina {{ $assignedManager->employee_number }} · {{ $assignedManager->area?->name ?? 'Sin área' }}.
+                    </p>
+                @elseif (trim($direct_manager_number) !== '')
+                    <p role="status" class="mt-2 text-sm text-red-600">No se encontró un gerente válido con esa nómina.</p>
+                @endif
+</div>
             @endif
             <div><x-label for="password" value="Contraseña temporal" /><x-input id="password" type="password" wire:model="password" class="w-full mt-1" required minlength="8" /></div>
             <div><x-label for="password_confirmation" value="Confirmar contraseña" /><x-input id="password_confirmation" type="password" wire:model="password_confirmation" class="w-full mt-1" required minlength="8" /></div>
