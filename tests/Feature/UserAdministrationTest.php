@@ -246,14 +246,13 @@ class UserAdministrationTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $unused->id]);
     }
 
-    public function test_user_deletion_preserves_requests_reports_and_own_account(): void
+    public function test_user_deletion_deletes_users_with_requests_and_protects_own_account(): void
     {
         $admin = $this->user();
         $employee = $this->user('worker');
         $manager = $this->user('supervisor');
         $this->actingAs($admin);
         $employee->update(['role' => 'supervisor', 'direct_manager_id' => $manager->id]);
-        $this->delete(route('admin.users.destroy', $manager))->assertSessionHas('error');
         $this->delete(route('admin.users.destroy', $admin))->assertSessionHas('error');
 
         $area = Area::create(['name' => 'Producción']);
@@ -261,9 +260,11 @@ class UserAdministrationTest extends TestCase
             'employee_id' => $employee->id, 'area_id' => $area->id,
             'group' => 'A', 'reason' => 'Horas extra', 'week' => '1',
         ]);
-        $this->delete(route('admin.users.destroy', $employee))->assertSessionHas('error');
-        $this->assertDatabaseHas('users', ['id' => $employee->id]);
-        $this->assertDatabaseCount('requests', 1);
+        $this->delete(route('admin.users.destroy', $employee))
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('deleted');
+        $this->assertDatabaseMissing('users', ['id' => $employee->id]);
+        $this->assertDatabaseCount('requests', 0);
     }
 
     public function test_only_admin_can_delete_users(): void
@@ -494,7 +495,7 @@ class UserAdministrationTest extends TestCase
             ->set('direct_manager_number', $worker->employee_number)->call('save')->assertHasErrors('direct_manager_number');
     }
 
-    public function test_bulk_deletion_removes_eligible_users_and_reports_protected_accounts(): void
+    public function test_bulk_deletion_removes_users_including_with_requests_and_protects_own_account(): void
     {
         $admin = $this->user();
         $free = $this->user('worker');
@@ -506,12 +507,12 @@ class UserAdministrationTest extends TestCase
         Livewire::actingAs($admin)->test(UserList::class)
             ->set('selected', array_map('strval', [$free->id, $second->id, $historic->id, $admin->id]))
             ->call('deleteSelected')->assertHasNoErrors()->assertSet('selected', [])
-            ->assertSee('2 usuario(s) eliminado(s); 2 conservado(s).')->assertSee($historic->employee_number);
+            ->assertSee('3 usuario(s) eliminado(s); 1 conservado(s).')->assertSee($admin->employee_number);
         $this->assertDatabaseMissing('users', ['id' => $free->id]);
         $this->assertDatabaseMissing('users', ['id' => $second->id]);
-        $this->assertDatabaseHas('users', ['id' => $historic->id]);
+        $this->assertDatabaseMissing('users', ['id' => $historic->id]);
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
-        $this->assertDatabaseCount('requests', 1);
+        $this->assertDatabaseCount('requests', 0);
     }
 
     public function test_bulk_selection_respects_filters_and_requires_admin_access(): void

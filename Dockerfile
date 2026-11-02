@@ -90,6 +90,16 @@ chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 php artisan storage:link --force >/dev/null 2>&1 || true
 
+# Wait for MySQL to accept connections on PC reboot before running migrations
+if [ -n "${DB_HOST:-}" ]; then
+    for i in $(seq 1 30); do
+        if php -r 'try { new PDO("mysql:host=".getenv("DB_HOST").";port=".(getenv("DB_PORT") ?: 3306), getenv("DB_USERNAME"), getenv("DB_PASSWORD")); exit(0); } catch (Throwable $e) { exit(1); }' >/dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+    done
+fi
+
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     php artisan migrate --force
 fi

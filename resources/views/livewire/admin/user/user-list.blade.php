@@ -18,7 +18,7 @@
         <span class="text-sm dark:text-black">{{ count($selected) }} seleccionado(s)</span>
         @if ($selected)
             <button type="button" wire:click="clearSelection" class="px-3 py-2 text-blue-700">Quitar selección</button>
-            <button type="button" data-delete-label="los usuarios seleccionados" data-delete-name="Se eliminarán los usuarios sin historial ni personal a cargo. Se mostrará cuáles se conservaron." onclick="confirmLivewireDeletion(event, this, 'deleteSelected')" wire:loading.attr="disabled" class="px-3 py-2 text-white bg-red-600 rounded-lg">Eliminar seleccionados</button>
+            <button type="button" data-delete-label="los usuarios seleccionados" data-delete-name="Se eliminarán los usuarios seleccionados y sus solicitudes asociadas." onclick="confirmLivewireDeletion(event, this, 'deleteSelected')" wire:loading.attr="disabled" class="px-3 py-2 text-white bg-red-600 rounded-lg">Eliminar seleccionados</button>
         @endif
     </div>
 

@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ${APP_IMAGE:-rh-system:latest}
-    restart: unless-stopped
+    restart: always
     env_file:
       - path: .env
         required: false
@@ -31,22 +31,57 @@ services:
 
   nginx:
     image: nginx:alpine
-    restart: unless-stopped
+    restart: always
     depends_on:
       - app
     ports:
       # Exposes HTTP on all host interfaces (0.0.0.0) so any device on the LAN can connect
       - "0.0.0.0:${HTTP_PORT:-80}:80"
     volumes:
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - prod-public:/var/www/html/public:ro
       - prod-storage:/var/www/html/storage:ro
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        printf '%s\n'
+        'server {'
+        '    listen 80;'
+        '    listen [::]:80;'
+        '    server_name _;'
+        '    root /var/www/html/public;'
+        '    index index.php;'
+        '    charset utf-8;'
+        '    client_max_body_size 20M;'
+        '    resolver 127.0.0.11 valid=30s ipv6=off;'
+        '    location / {'
+        '        try_files $$uri $$uri/ /index.php?$$query_string;'
+        '    }'
+        '    location = /favicon.ico { access_log off; log_not_found off; }'
+        '    location = /robots.txt  { access_log off; log_not_found off; }'
+        '    error_page 404 /index.php;'
+        '    location ~ \.php$$ {'
+        '        set $$upstream app:9000;'
+        '        fastcgi_pass $$upstream;'
+        '        fastcgi_param SCRIPT_FILENAME $$realpath_root$$fastcgi_script_name;'
+        '        include fastcgi_params;'
+        '        fastcgi_param HTTP_X_REAL_IP $$remote_addr;'
+        '        fastcgi_param HTTP_X_FORWARDED_FOR $$proxy_add_x_forwarded_for;'
+        '        fastcgi_param HTTP_X_FORWARDED_PROTO $$scheme;'
+        '        fastcgi_read_timeout 300s;'
+        '        fastcgi_buffers 16 16k;'
+        '        fastcgi_buffer_size 32k;'
+        '    }'
+        '    location ~ /\.(?!well-known).* {'
+        '        deny all;'
+        '    }'
+        '}' > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'
     networks:
       - rh-lan
 
   mysql:
     image: mysql:8.4
-    restart: unless-stopped
+    restart: always
     ports:
       - "${FORWARD_DB_PORT:-3306}:3306"
     environment:
