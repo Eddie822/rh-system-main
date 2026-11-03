@@ -3,10 +3,10 @@
 namespace App\Imports;
 
 use App\Models\Area;
-use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Exception;
@@ -29,6 +29,9 @@ class UserRosterImporter
         try {
             $reader = IOFactory::createReaderForFile($file->getRealPath());
             $reader->setReadDataOnly(true);
+            if (method_exists($reader, 'setReadEmptyCells')) {
+                $reader->setReadEmptyCells(false);
+            }
             $book = $reader->load($file->getRealPath());
         } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception|Exception $exception) {
             throw ValidationException::withMessages(['file' => 'No se pudo leer el Excel. Descarga la plantilla y vuelve a guardar el archivo como .xlsx.']);
@@ -104,7 +107,11 @@ class UserRosterImporter
                 $areas = Area::all()->keyBy(fn (Area $area) => mb_strtolower(trim($area->name)));
                 $existingUsers = [];
                 $existingByTrimmedZero = [];
-                foreach (User::lockForUpdate()->get() as $existingUser) {
+                $existingRows = DB::table('users')
+                    ->select(['id', 'employee_number', 'area_id', 'puesto'])
+                    ->lockForUpdate()
+                    ->get();
+                foreach ($existingRows as $existingUser) {
                     $key = mb_strtolower(trim((string) $existingUser->employee_number));
                     $existingUsers[$key] = $existingUser;
                     if (ctype_digit($key)) {
@@ -113,7 +120,10 @@ class UserRosterImporter
                     }
                 }
 
+                $now = now();
                 $credentials = [];
+                $inserts = [];
+                $updates = [];
                 $updated = 0;
                 $unchanged = 0;
                 foreach ($prepared as $row) {
@@ -135,10 +145,13 @@ class UserRosterImporter
                         $areaChanged = (int) $user->area_id !== (int) $targetArea->id;
                         $positionChanged = trim((string) ($user->puesto ?? '')) !== $row['position'];
                         if ($areaChanged || $positionChanged) {
-                            $user->forceFill([
-                                'area_id' => $targetArea->id,
+                            $user->area_id = $targetArea->id;
+                            $user->puesto = $row['position'];
+                            $updates[$user->id] = [
+                                'id' => (int) $user->id,
+                                'area_id' => (int) $targetArea->id,
                                 'puesto' => $row['position'],
-                            ])->save();
+                            ];
                             $updated++;
                         } else {
                             $unchanged++;
@@ -147,7 +160,7 @@ class UserRosterImporter
                         continue;
                     }
                     $password = Str::random(16);
-                    $createdUser = User::create([
+                    $inserts[] = [
                         'employee_number' => $row['employeeNumber'],
                         'name' => $row['name'],
                         'apellidos_pat' => $row['paternal'],
@@ -155,21 +168,58 @@ class UserRosterImporter
                         'puesto' => $row['position'],
                         'role' => 'worker',
                         'area_id' => $targetArea->id,
-                        'password' => $password,
+                        'password' => Hash::make($password),
                         'must_change_password' => true,
-                    ]);
-                    $existingUsers[$lookupKey] = $createdUser;
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $placeholder = (object) [
+                        'id' => null,
+                        'employee_number' => $row['employeeNumber'],
+                        'area_id' => $targetArea->id,
+                        'puesto' => $row['position'],
+                    ];
+                    $existingUsers[$lookupKey] = $placeholder;
                     if (ctype_digit($lookupKey)) {
                         $normalizedDigits = ltrim($lookupKey, '0') ?: '0';
-                        $existingByTrimmedZero[$normalizedDigits][] = $createdUser;
+                        $existingByTrimmedZero[$normalizedDigits][] = $placeholder;
                     }
                     $credentials[] = [$row['employeeNumber'], $row['name'], $row['paternal'], $row['maternal'], $password];
                 }
 
-                $duplicateManagers = User::where('role', 'area_manager')->whereNotNull('area_id')
-                    ->select('area_id')->groupBy('area_id')->havingRaw('COUNT(*) > 1')->exists();
-                if ($duplicateManagers) {
-                    throw ValidationException::withMessages(['file' => 'La importación se canceló: el cambio de área dejaría más de un gerente de área en la misma área. Revisa las asignaciones antes de importar.']);
+                foreach (array_chunk(array_values($updates), 250) as $chunk) {
+                    $ids = [];
+                    $areaCases = [];
+                    $puestoCases = [];
+                    $bindings = [];
+
+                    foreach ($chunk as $item) {
+                        $areaCases[] = 'WHEN ? THEN ?';
+                        $bindings[] = $item['id'];
+                        $bindings[] = $item['area_id'];
+                    }
+                    foreach ($chunk as $item) {
+                        $puestoCases[] = 'WHEN ? THEN ?';
+                        $bindings[] = $item['id'];
+                        $bindings[] = $item['puesto'];
+                    }
+                    $bindings[] = $now;
+                    foreach ($chunk as $item) {
+                        $ids[] = '?';
+                        $bindings[] = $item['id'];
+                    }
+
+                    $areaSql = implode(' ', $areaCases);
+                    $puestoSql = implode(' ', $puestoCases);
+                    $idSql = implode(', ', $ids);
+                    DB::update(
+                        "UPDATE users SET area_id = CASE id {$areaSql} END, puesto = CASE id {$puestoSql} END, updated_at = ? WHERE id IN ({$idSql})",
+                        $bindings
+                    );
+                }
+
+                foreach (array_chunk($inserts, 250) as $chunk) {
+                    DB::table('users')->insert($chunk);
                 }
 
                 return compact('credentials', 'skipped', 'updated', 'unchanged');

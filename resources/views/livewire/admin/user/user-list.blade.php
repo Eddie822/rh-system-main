@@ -110,7 +110,7 @@
                         <td class="px-4 py-2">{{ $user->puesto ?? '—' }}</td>
                         <td class="px-4 py-2">{{ $roles[$user->role] ?? $user->role }}</td>
                         <td class="px-4 py-2">{{ $user->area->name ?? '—' }}</td>
-                        <td class="px-4 py-2">@if ($user->role === 'supervisor'){{ $user->areaManager?->full_name ?? $user->directManager?->full_name ?? 'Sin asignar' }}@else — @endif</td>
+                        <td class="px-4 py-2">@if (in_array($user->role, ['supervisor', 'worker'], true)){{ $user->areaManager?->full_name ?? $user->directManager?->full_name ?? 'Sin asignar' }}@else — @endif</td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="flex items-center gap-2">
                                 <a href="{{ route('admin.users.show', $user) }}"
@@ -180,7 +180,7 @@
                     </span>
                 </div>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ $user->area->name ?? 'Sin área' }}</p>
-                @if ($user->role === 'supervisor')
+                @if (in_array($user->role, ['supervisor', 'worker'], true))
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Gerente asignado: {{ $user->areaManager?->full_name ?? $user->directManager?->full_name ?? 'Sin asignar' }}</p>
                 @endif
                 <div class="flex gap-2 mt-3">

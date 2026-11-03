@@ -190,6 +190,7 @@ class GroupRequestForm extends Component
         $results = [];
         foreach ($this->employees as $index => $entry) {
             $term = trim(mb_substr((string) ($this->employeeSearch[$index] ?? ''), 0, 100));
+            $numericTerm = ctype_digit($term) ? (int) (ltrim($term, '0') ?: '0') : -1;
             $results[$index] = $term === '' ? collect() : User::where('role', 'worker')
                 ->where(function ($query) use ($term) {
                     foreach (preg_split('/\s+/u', $term) as $word) {
@@ -198,7 +199,13 @@ class GroupRequestForm extends Component
                             ->orWhere('apellidos_pat', 'like', "%{$word}%")
                             ->orWhere('apellido_mat', 'like', "%{$word}%"));
                     }
-                })->orderBy('employee_number')->limit(10)->get();
+                })
+                ->orderByRaw(
+                    'CASE WHEN employee_number = ? THEN 0 WHEN CAST(employee_number AS UNSIGNED) = ? THEN 1 WHEN employee_number LIKE ? THEN 2 WHEN employee_number LIKE ? THEN 3 ELSE 4 END ASC, CAST(employee_number AS UNSIGNED) ASC, LENGTH(employee_number) ASC, employee_number ASC',
+                    [$term, $numericTerm, $term.'%', '%'.$term.'%']
+                )
+                ->limit(10)
+                ->get();
         }
 
         $selectedNumbers = array_values(array_filter(array_column($this->employees, 'employee_number')));

@@ -123,16 +123,12 @@ class UserEdit extends Component
             && User::where('role', $validated['role'])->whereKeyNot($this->user->id)->exists()) {
             throw ValidationException::withMessages(['role' => 'Ya existe un usuario con este cargo único.']);
         }
-        if ($validated['role'] === 'area_manager'
-            && User::where('role', 'area_manager')->where('area_id', $validated['area_id'])->whereKeyNot($this->user->id)->exists()) {
-            throw ValidationException::withMessages(['area_id' => 'Esta área ya tiene un gerente de área.']);
-        }
 
         if (empty($validated['password'])) {
             unset($validated['password']);
         }
         unset($validated['password_confirmation']);
-        if ($validated['role'] !== 'supervisor') {
+        if (! in_array($validated['role'], ['supervisor', 'worker'], true)) {
             $validated['area_manager_id'] = null;
         }
 
@@ -144,7 +140,11 @@ class UserEdit extends Component
         };
         if ($expectedBossRole === null) {
             $validated['direct_manager_id'] = null;
-            $validated['area_manager_id'] = null;
+            if ($validated['role'] !== 'worker') {
+                $validated['area_manager_id'] = null;
+            } else {
+                $validated['area_manager_id'] = $validated['area_manager_id'] ?: null;
+            }
         } else {
             $bossId = $validated['direct_manager_id'];
             if ($bossId) {

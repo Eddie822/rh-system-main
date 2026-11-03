@@ -73,21 +73,37 @@ class UserList extends Component
     {
         $sortField = in_array($this->sortField, ['name', 'employee_number'], true) ? $this->sortField : 'name';
         $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
+        $search = trim($this->search);
 
-        return User::query()
-            ->when($this->search, function ($query) {
-                $query->where(function ($q) {
-                    $q->where('name', 'like', '%'.$this->search.'%')
-                        ->orWhere('apellidos_pat', 'like', '%'.$this->search.'%')
-                        ->orWhere('apellido_mat', 'like', '%'.$this->search.'%')
-                        ->orWhere('employee_number', 'like', '%'.$this->search.'%');
+        $query = User::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('apellidos_pat', 'like', '%'.$search.'%')
+                        ->orWhere('apellido_mat', 'like', '%'.$search.'%')
+                        ->orWhere('employee_number', 'like', '%'.$search.'%');
                 });
             })
             ->when($this->roleFilter, fn ($query) => $query->where('role', $this->roleFilter)
             )
             ->when($this->areaFilter, fn ($query) => $query->where('area_id', $this->areaFilter)
-            )
-            ->orderBy($sortField, $sortDirection);
+            );
+
+        if ($search !== '') {
+            $numericSearch = ctype_digit($search) ? (int) (ltrim($search, '0') ?: '0') : -1;
+            $query->orderByRaw(
+                'CASE WHEN employee_number = ? THEN 0 WHEN CAST(employee_number AS UNSIGNED) = ? THEN 1 WHEN employee_number LIKE ? THEN 2 WHEN employee_number LIKE ? THEN 3 ELSE 4 END ASC, CAST(employee_number AS UNSIGNED) ASC, LENGTH(employee_number) ASC',
+                [$search, $numericSearch, $search.'%', '%'.$search.'%']
+            );
+        }
+
+        if ($sortField === 'employee_number') {
+            return $query->orderByRaw(
+                "CAST(employee_number AS UNSIGNED) {$sortDirection}, LENGTH(employee_number) {$sortDirection}, employee_number {$sortDirection}"
+            );
+        }
+
+        return $query->orderBy($sortField, $sortDirection);
     }
 
     private function usersQuery()

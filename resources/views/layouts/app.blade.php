@@ -4,7 +4,7 @@
 <head>
 
     <script>
-        if (localStorage.getItem('darkMode') === 'true') {
+        if (localStorage.getItem('theme') === 'dark' || localStorage.getItem('darkMode') === 'true') {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');

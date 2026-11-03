@@ -5,14 +5,15 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="flex items-center shrink-0">
-                    <a href="{{ auth()->user()->can('create', \App\Models\Request::class) ? route('request') : route('requests.index') }}">
+                    <a
+                        href="{{ auth()->user()->can('create', \App\Models\Request::class) ? route('request') : route('requests.index') }}">
                         <x-application-mark class="block w-auto h-9" />
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
                 <div
-                    class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex text-stone-800 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                    class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex text-stone-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
                     @can('create', \App\Models\Request::class)
                         <x-nav-link href="{{ route('request') }}" :active="request()->routeIs('request')">
                             {{ __('Solicitudes') }}
@@ -120,7 +121,7 @@
                             @else
                                 <span class="inline-flex rounded-md">
                                     <button type="button"
-                                        class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50">
+                                        class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md dark:text-gray-200 dark:bg-gray-800 hover:text-gray-700 dark:hover:text-white focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 active:bg-gray-50 dark:active:bg-gray-700">
                                         {{ Auth::user()->name }}
 
                                         <svg class="ms-2 -me-0.5 size-4" xmlns="http://www.w3.org/2000/svg"
@@ -206,14 +207,14 @@
             </x-responsive-nav-link>
 
             @if (auth()->user()->canApprove())
-                <x-responsive-nav-link href="{{ route('approvals.index') }}">
+                <x-responsive-nav-link href="{{ route('approvals.index') }}" :active="request()->routeIs('approvals.*')">
                     {{ __('Aprobaciones') }}
                 </x-responsive-nav-link>
             @endif
         </div>
 
         <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
+        <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
             <div class="flex items-center px-4">
                 @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
                     <div class="shrink-0 me-3">
@@ -223,8 +224,8 @@
                 @endif
 
                 <div>
-                    <div class="text-base font-medium text-gray-800">{{ Auth::user()->name }}</div>
-                    <div class="text-sm font-medium text-gray-500">{{ Auth::user()->email }}</div>
+                    <div class="text-base font-medium text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
+                    <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ Auth::user()->email }}</div>
                 </div>
             </div>
 

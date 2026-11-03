@@ -141,6 +141,21 @@
             @enderror
         </div>
 
+        @if ($role === 'worker')
+            <div>
+                <label for="area_manager_id" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gerente de área asignado (opcional)</label>
+                <select id="area_manager_id" wire:model="area_manager_id"
+                    class="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
+                           border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400">
+                    <option value="">Sin gerente asignado</option>
+                    @foreach ($areaManagers as $manager)
+                        <option value="{{ $manager->id }}">{{ $manager->employee_number }} — {{ $manager->full_name }} ({{ $manager->area?->name ?? 'Sin área' }})</option>
+                    @endforeach
+                </select>
+                @error('area_manager_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+            </div>
+        @endif
+
         @if (! in_array($role, ['worker', 'plant_manager'], true))
             <div>
                 <label for="direct_manager_number" class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ $role === 'supervisor' ? 'Nómina del gerente asignado' : 'Nómina del jefe directo' }}</label>

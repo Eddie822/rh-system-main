@@ -64,11 +64,14 @@ class Request extends Model
 
     public function areaApproverId(): ?int
     {
+        $creator = $this->employee;
+        if (in_array($creator?->role, ['area_manager', 'hr_manager', 'plant_manager'], true)) {
+            return $creator->id;
+        }
         if ($this->assigned_area_manager_id) {
             return $this->assigned_area_manager_id;
         }
-        $creator = $this->employee;
-        if ($creator?->role === 'supervisor' && ($creator->area_manager_id || $creator->direct_manager_id)) {
+        if ($creator && ($creator->area_manager_id || ($creator->role === 'supervisor' && $creator->direct_manager_id))) {
             return $creator->area_manager_id ?? $creator->direct_manager_id;
         }
 
@@ -101,6 +104,10 @@ class Request extends Model
     {
         return $query->where(function (Builder $query) use ($user) {
             $query->where('assigned_area_manager_id', $user->id)
+                ->when(
+                    in_array($user->role, ['area_manager', 'hr_manager', 'plant_manager'], true),
+                    fn (Builder $query) => $query->orWhere('employee_id', $user->id)
+                )
                 ->orWhere(function (Builder $query) use ($user) {
                     $query->whereNull('assigned_area_manager_id')->where(function (Builder $query) use ($user) {
                         $query->whereHas('employee', fn (Builder $query) => $query->where('role', 'supervisor')
@@ -108,8 +115,9 @@ class Request extends Model
                                 ->orWhere(fn (Builder $query) => $query->whereNull('area_manager_id')->where('direct_manager_id', $user->id))));
                         if ($user->role === 'area_manager' && $user->area_id !== null) {
                             $query->orWhere(fn (Builder $query) => $query->where('area_id', $user->area_id)
-                                ->whereDoesntHave('employee', fn (Builder $query) => $query->where('role', 'supervisor')
-                                    ->where(fn (Builder $query) => $query->whereNotNull('area_manager_id')->orWhereNotNull('direct_manager_id'))));
+                                ->whereDoesntHave('employee', fn (Builder $query) => $query->whereIn('role', ['area_manager', 'hr_manager', 'plant_manager'])
+                                    ->orWhere(fn (Builder $query) => $query->where('role', 'supervisor')
+                                        ->where(fn (Builder $query) => $query->whereNotNull('area_manager_id')->orWhereNotNull('direct_manager_id')))));
                         }
                     });
                 });

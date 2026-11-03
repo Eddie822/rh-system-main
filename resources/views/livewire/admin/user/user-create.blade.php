@@ -15,6 +15,18 @@
                 <option value="">Sin área</option>@foreach ($areas as $area) <option value="{{ $area->id }}">{{ $area->name }}</option> @endforeach
             </select></div>
             <div><x-label for="puesto" value="Puesto" /><x-input id="puesto" wire:model="puesto" class="w-full mt-1" /></div>
+            @if ($role === 'worker')
+                <div>
+                    <x-label for="area_manager_id" value="Gerente de área asignado (opcional)" />
+                    <select id="area_manager_id" wire:model="area_manager_id" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900">
+                        <option value="">Sin gerente asignado</option>
+                        @foreach ($areaManagers as $manager)
+                            <option value="{{ $manager->id }}">{{ $manager->employee_number }} — {{ $manager->full_name }} ({{ $manager->area?->name ?? 'Sin área' }})</option>
+                        @endforeach
+                    </select>
+                    <x-input-error for="area_manager_id" />
+                </div>
+            @endif
             @if (! in_array($role, ['worker', 'plant_manager'], true))
                 <div><x-label for="direct_manager_number" :value="$role === 'supervisor' ? 'Nómina del gerente asignado' : 'Nómina del jefe directo'" /><input type="text" id="direct_manager_number" wire:model.live.debounce.400ms="direct_manager_number" list="direct-manager-options" maxlength="50" placeholder="Ej. 0356" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900" @required(in_array($role, ['worker', 'supervisor'], true)) />
                     <datalist id="direct-manager-options">

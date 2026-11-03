@@ -74,10 +74,9 @@ class UserCreate extends Component
         if ($validated['role'] === 'hr_manager' && User::where('role', 'hr_manager')->exists()) {
             throw ValidationException::withMessages(['role' => 'Ya existe un gerente de RH.']);
         }
-        if ($validated['role'] === 'area_manager' && User::where('role', 'area_manager')->where('area_id', $validated['area_id'])->exists()) {
-            throw ValidationException::withMessages(['area_id' => 'Esta área ya tiene un gerente de área.']);
-        }
-        $validated['area_manager_id'] = $validated['role'] === 'supervisor' ? $validated['direct_manager_id'] : null;
+        $validated['area_manager_id'] = $validated['role'] === 'supervisor'
+            ? $validated['direct_manager_id']
+            : ($validated['role'] === 'worker' ? ($validated['area_manager_id'] ?: null) : null);
         foreach (['area_id', 'area_manager_id', 'direct_manager_id'] as $field) {
             $validated[$field] = $validated[$field] ?: null;
         }
