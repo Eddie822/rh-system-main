@@ -100,7 +100,6 @@
                                     <td class="p-2">
 
                                         <input type="date" wire:model="rows.{{ $index }}.day_date"
-                                            min="{{ now()->addDay()->format('Y-m-d') }}"
                                             class="w-full px-2 py-2 text-gray-900 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-white dark:border-gray-600">
 
                                         @error("rows.$index.day_date")

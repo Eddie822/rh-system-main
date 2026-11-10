@@ -109,7 +109,7 @@ class GroupRequestForm extends Component
                 Rule::exists('users', 'employee_number')->where('role', 'worker'),
             ],
             'employees.*.days' => 'required|array|min:1|max:7',
-            'employees.*.days.*.day_date' => 'required|date_format:Y-m-d|after:today',
+            'employees.*.days.*.day_date' => 'required|date_format:Y-m-d',
             'employees.*.days.*.hours' => 'required|numeric|gt:0|max:12|decimal:0,2',
         ], [
             'employees.*.employee_number.exists' => 'Selecciona un empleado registrado con rol de trabajador.',

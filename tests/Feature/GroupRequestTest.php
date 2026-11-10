@@ -180,18 +180,19 @@ class GroupRequestTest extends TestCase
         $this->assertDatabaseCount('requests', 0);
     }
 
-    public function test_validation_rejects_past_dates_and_different_weeks_or_years(): void
+    public function test_validation_accepts_past_dates_and_rejects_different_weeks_or_years(): void
     {
         [$supervisor, $first, $second] = $this->team();
-        $entries = $this->entries($first, $second);
-        $entries[1]['days'][0]['day_date'] = now()->toDateString();
-        $this->submit($supervisor, $entries)->assertHasErrors(['employees.1.days.0.day_date']);
         $entries = $this->entries($first, $second);
         $entries[1]['days'][0]['day_date'] = now()->addWeeks(4)->toDateString();
         $this->submit($supervisor, $entries)->assertHasErrors(['employees']);
         $entries[0]['days'] = [['day_date' => '2030-01-07', 'hours' => 2]];
         $entries[1]['days'] = [['day_date' => '2031-01-06', 'hours' => 2]];
         $this->submit($supervisor, $entries)->assertHasErrors(['employees']);
+        $pastMonday = now()->subWeek()->startOfWeek();
+        $entries[0]['days'] = [['day_date' => $pastMonday->toDateString(), 'hours' => 2]];
+        $entries[1]['days'] = [['day_date' => $pastMonday->copy()->addDay()->toDateString(), 'hours' => 3]];
+        $this->submit($supervisor, $entries)->assertHasNoErrors();
     }
 
     public function test_employees_track_only_their_own_days_and_cannot_edit_or_approve(): void

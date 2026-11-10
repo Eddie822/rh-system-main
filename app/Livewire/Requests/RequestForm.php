@@ -32,7 +32,7 @@ class RequestForm extends Component
                 : 'nullable|string|max:50',
 
             'rows' => 'required|array|min:1',
-            'rows.*.day_date' => 'required|date|after:today',
+            'rows.*.day_date' => 'required|date',
             'rows.*.hours' => 'required|numeric|gt:0|max:12|decimal:0,2',
         ];
     }

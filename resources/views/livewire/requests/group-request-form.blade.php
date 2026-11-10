@@ -55,7 +55,7 @@
                     <div wire:key="employee-{{ $index }}-day-{{ $dayIndex }}" class="grid items-end gap-3 sm:grid-cols-3">
                         <div>
                             <x-label for="date-{{ $index }}-{{ $dayIndex }}" value="Fecha" />
-                            <x-input id="date-{{ $index }}-{{ $dayIndex }}" type="date" min="{{ now()->addDay()->format('Y-m-d') }}" wire:model="employees.{{ $index }}.days.{{ $dayIndex }}.day_date" class="w-full mt-1" />
+                            <x-input id="date-{{ $index }}-{{ $dayIndex }}" type="date" wire:model="employees.{{ $index }}.days.{{ $dayIndex }}.day_date" class="w-full mt-1" />
                         </div>
                         <div>
                             <x-label for="hours-{{ $index }}-{{ $dayIndex }}" value="Horas extra" />

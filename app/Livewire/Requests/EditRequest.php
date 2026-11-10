@@ -44,7 +44,7 @@ class EditRequest extends Component
             'reason' => 'required|string|max:255',
 
             'rows' => 'required|array|min:1',
-            'rows.*.day_date' => 'required|date|after:today',
+            'rows.*.day_date' => 'required|date',
             'rows.*.hours' => 'required|numeric|min:0|max:12',
         ];
     }
