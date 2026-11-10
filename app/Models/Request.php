@@ -43,9 +43,88 @@ class Request extends Model
         'rejected' => 'Rechazada',
     ];
 
+    public const ROLE_LABELS = [
+        'area_manager' => 'Gerente de área',
+        'hr_manager' => 'Gerente de RH',
+        'plant_manager' => 'Gerente de planta',
+    ];
+
+    public const STATUS_TO_ROLE = [
+        'pending_area_manager' => 'area_manager',
+        'pending_hr_manager' => 'hr_manager',
+        'pending_plant_manager' => 'plant_manager',
+    ];
+
     public function getStatusLabelAttribute(): string
     {
-        return self::STATUS_LABELS[$this->status] ?? $this->status;
+        return $this->statusLabelWithManager();
+    }
+
+    public function statusLabelWithManager(?array $customLabels = null): string
+    {
+        $labels = $customLabels ?? self::STATUS_LABELS;
+        $base = $labels[$this->status] ?? $this->status;
+        $role = self::STATUS_TO_ROLE[$this->status] ?? null;
+
+        return $role ? $base.$this->managerSuffixForRole($role) : $base;
+    }
+
+    public function roleLabelWithManager(string $role, ?string $baseLabel = null): string
+    {
+        $label = $baseLabel ?? (self::ROLE_LABELS[$role] ?? $role);
+
+        return $label.$this->managerSuffixForRole($role);
+    }
+
+    public function managerSuffixForRole(string $role): string
+    {
+        $name = $this->managerNameForRole($role);
+
+        return $name ? " ({$name})" : '';
+    }
+
+    public function managerNameForRole(string $role): ?string
+    {
+        if ($this->relationLoaded('authorizations')) {
+            $auth = $this->authorizations->firstWhere('authorization_role', $role);
+            if ($auth && $auth->relationLoaded('user') && $auth->user) {
+                return $auth->user->full_name;
+            }
+        }
+
+        if ($role === 'area_manager') {
+            if ($this->assigned_area_manager_id && $this->relationLoaded('assignedAreaManager') && $this->assignedAreaManager) {
+                return $this->assignedAreaManager->full_name;
+            }
+
+            $approverId = $this->areaApproverId();
+            if (! $approverId) {
+                return null;
+            }
+
+            if ($this->relationLoaded('assignedAreaManager') && $this->assignedAreaManager?->id === $approverId) {
+                return $this->assignedAreaManager->full_name;
+            }
+
+            if ($this->relationLoaded('employee') && $this->employee?->id === $approverId) {
+                return $this->employee->full_name;
+            }
+
+            return User::find($approverId)?->full_name;
+        }
+
+        if (in_array($role, ['hr_manager', 'plant_manager'], true)) {
+            $names = User::where('role', $role)
+                ->orderBy('id')
+                ->get()
+                ->map(fn (User $user) => $user->full_name)
+                ->filter()
+                ->join(', ');
+
+            return $names !== '' ? $names : null;
+        }
+
+        return null;
     }
 
     public const APPROVAL_ROLES = ['area_manager', 'hr_manager', 'plant_manager'];

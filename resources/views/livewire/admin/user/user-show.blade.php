@@ -113,7 +113,7 @@
                                         $request->status,
                                         'pending'),
                                 ])>
-                                    {{ $statusLabels[$request->status] ?? $request->status }}
+                                    {{ $request->statusLabelWithManager($statusLabels) }}
                                 </span>
                             </td>
                         </tr>
@@ -156,7 +156,7 @@
                                 $request->status,
                                 'pending'),
                         ])>
-                            {{ $statusLabels[$request->status] ?? $request->status }}
+                            {{ $request->statusLabelWithManager($statusLabels) }}
                         </span>
                     </div>
                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">

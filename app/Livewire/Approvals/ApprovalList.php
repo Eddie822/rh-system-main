@@ -57,6 +57,7 @@ class ApprovalList extends Component
         $query = RequestModel::with([
             'employee',
             'area',
+            'assignedAreaManager',
         ])
             ->withCount('participants')
             ->withSum('days', 'hours');

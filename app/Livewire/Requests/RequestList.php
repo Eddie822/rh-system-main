@@ -42,9 +42,13 @@ class RequestList extends Component
     {
         $userId = auth()->id();
 
-        $requests = Request::with(['days' => fn ($query) => $query->where(fn ($query) => $query
-            ->whereNull('employee_id')->orWhere('employee_id', $userId)
-            ->orWhereHas('request', fn ($query) => $query->where('employee_id', $userId)))])
+        $requests = Request::with([
+            'employee',
+            'assignedAreaManager',
+            'days' => fn ($query) => $query->where(fn ($query) => $query
+                ->whereNull('employee_id')->orWhere('employee_id', $userId)
+                ->orWhereHas('request', fn ($query) => $query->where('employee_id', $userId))),
+        ])
             ->withExists('authorizations')
             ->forEmployee(auth()->user())
             ->when($this->deadline === 'soon', fn ($query) => $query->expiringSoon())

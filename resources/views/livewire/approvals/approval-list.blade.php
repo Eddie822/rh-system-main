@@ -73,6 +73,7 @@
                         <th class="px-6 py-3">Grupo</th>
                         <th class="px-6 py-3">Justificación</th>
                         <th class="px-6 py-3">Horas</th>
+                        <th class="px-6 py-3">Estado</th>
                         <th class="px-6 py-3">Vencimiento</th>
                         <th class="px-6 py-3">Creada</th>
                         <th class="px-6 py-3">Acciones</th>
@@ -117,6 +118,33 @@
 
                             <td class="px-6 py-4">
                                 {{ number_format((float) ($request->days_sum_hours ?? $request->days->sum('hours')), 2) }}
+                            </td>
+
+                            <td class="px-6 py-4">
+                                @switch($request->status)
+                                    @case('pending_area_manager')
+                                        <span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded">
+                                            Pendiente Gerente Área{{ $request->managerSuffixForRole('area_manager') }}
+                                        </span>
+                                    @break
+
+                                    @case('pending_hr_manager')
+                                        <span class="px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded">
+                                            Pendiente RH{{ $request->managerSuffixForRole('hr_manager') }}
+                                        </span>
+                                    @break
+
+                                    @case('pending_plant_manager')
+                                        <span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded">
+                                            Pendiente Gerente Planta{{ $request->managerSuffixForRole('plant_manager') }}
+                                        </span>
+                                    @break
+
+                                    @default
+                                        <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded">
+                                            {{ $request->status_label }}
+                                        </span>
+                                @endswitch
                             </td>
 
                             <td class="px-6 py-4"><x-request-expiration :request="$request" /></td>

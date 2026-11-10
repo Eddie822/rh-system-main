@@ -30,7 +30,7 @@ class UserShow extends Component
             ->orWhereHas('request', fn ($query) => $query->where('employee_id', $this->user->id)));
         $requests = Request::forEmployee($this->user)
             ->withCount(['days' => $days])
-            ->with(['days' => fn ($query) => $days($query)->orderBy('day_date')])
+            ->with(['employee', 'assignedAreaManager', 'days' => fn ($query) => $days($query)->orderBy('day_date')])
             ->latest('created_at')
             ->paginate(10);
 

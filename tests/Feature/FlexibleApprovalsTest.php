@@ -7,6 +7,8 @@ use App\Exports\ApprovedOvertimeExport;
 use App\Livewire\Approvals\ApprovalList;
 use App\Livewire\Approvals\ApprovalShow;
 use App\Livewire\Requests\GroupRequestForm;
+use App\Livewire\Requests\RequestList;
+use App\Livewire\Requests\RequestLookup;
 use App\Models\Area;
 use App\Models\Request;
 use App\Models\User;
@@ -142,7 +144,7 @@ class FlexibleApprovalsTest extends TestCase
         [$supervisor, $area, $hr, $plant] = $this->scenario();
         $this->travelTo(now()->startOfHour());
         $request = $this->request($supervisor);
-        $date = $request->days()->sole()->day_date->toDateString();
+        $date = $request->created_at->toDateString();
         $report = new ApprovedOvertimeReport(['period' => 'day', 'date' => $date]);
         $export = new ApprovedOvertimeExport($report);
         app(DecideRequest::class)->handle($request, $plant, 'approved');
@@ -152,5 +154,31 @@ class FlexibleApprovalsTest extends TestCase
         $this->travel(1)->hours();
         app(DecideRequest::class)->handle($request, $area, 'approved');
         $this->assertSame(Date::dateTimeToExcel(now()), $export->map($report->query()->first())[12]);
+    }
+
+    public function test_status_labels_include_manager_names_and_any_user_can_lookup_requests_by_id(): void
+    {
+        [$supervisor, $area, $hr, $plant] = $this->scenario();
+        $request = $this->request($supervisor);
+        $outsider = User::factory()->create(['role' => 'worker', 'must_change_password' => false]);
+
+        $this->assertStringContainsString("({$area->full_name})", $request->status_label);
+
+        Livewire::actingAs($supervisor)->test(RequestList::class)
+            ->assertSee("Pendiente Gerente Área ({$area->full_name})");
+
+        Livewire::actingAs($outsider)->test(RequestLookup::class)
+            ->set('search', '#'.$request->id)
+            ->assertSee('Solicitud #'.$request->id)
+            ->assertSee("Pendiente Gerente de Área ({$area->full_name})")
+            ->assertSee("Gerente de Área ({$area->full_name})")
+            ->assertSee("Gerente de RH ({$hr->full_name})")
+            ->assertSee("Gerente de Planta ({$plant->full_name})");
+
+        $this->actingAs($outsider)
+            ->get(route('requests.search.show', $request))
+            ->assertOk()
+            ->assertSee('Solicitud #'.$request->id)
+            ->assertSee("Pendiente Gerente de Área ({$area->full_name})");
     }
 }

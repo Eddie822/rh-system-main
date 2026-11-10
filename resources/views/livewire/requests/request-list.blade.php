@@ -177,19 +177,19 @@
 
                                     @case('pending_area_manager')
                                         <span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded">
-                                            Pendiente Gerente Área
+                                            Pendiente Gerente Área{{ $request->managerSuffixForRole('area_manager') }}
                                         </span>
                                     @break
 
                                     @case('pending_hr_manager')
                                         <span class="px-2 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded">
-                                            Pendiente RH
+                                            Pendiente RH{{ $request->managerSuffixForRole('hr_manager') }}
                                         </span>
                                     @break
 
                                     @case('pending_plant_manager')
                                         <span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded">
-                                           Pendiente Gerente Planta
+                                           Pendiente Gerente Planta{{ $request->managerSuffixForRole('plant_manager') }}
                                         </span>
                                     @break
 

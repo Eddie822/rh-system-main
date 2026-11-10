@@ -42,6 +42,21 @@ Route::middleware([
         return view('users.requests.group');
     })->name('requests.group.create');
 
+    Route::get('/requests-search', function () {
+        return view('users.requests.search');
+    })->name('requests.search');
+
+    Route::get('/requests-search/{request}', function (Request $request) {
+        $request->load(['employee', 'area', 'assignedAreaManager', 'authorizations.user', 'days.employee']);
+        $approverId = $request->areaApproverId();
+        $areaApprover = ($approverId && $request->assigned_area_manager_id === $approverId)
+            ? $request->assignedAreaManager
+            : ($approverId ? \App\Models\User::find($approverId) : null);
+        $missingApprovals = $request->missingApprovalRoles();
+
+        return view('users.requests.search-show', compact('request', 'areaApprover', 'missingApprovals'));
+    })->name('requests.search.show');
+
     Route::resource('requests', RequestsController::class);
 
     Route::resource('approvals', ApprovalController::class);

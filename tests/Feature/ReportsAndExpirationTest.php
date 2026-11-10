@@ -64,7 +64,7 @@ class ReportsAndExpirationTest extends TestCase
         ], $attributes));
     }
 
-    private function request(string $status = 'approved', string $date = '2030-01-07'): Request
+    private function request(string $status = 'approved', string $date = '2030-01-07', ?string $createdAt = null): Request
     {
         $area = Area::firstOrCreate(['name' => 'Production']);
         $employee = $this->user(attributes: ['area_id' => $area->id]);
@@ -72,6 +72,8 @@ class ReportsAndExpirationTest extends TestCase
             'employee_id' => $employee->id, 'area_id' => $area->id, 'group' => 'A',
             'reason' => 'Overtime', 'status' => $status, 'week' => '2',
         ]);
+        $timestamp = Carbon::parse($createdAt ?? $date)->setTime(10, 0);
+        $request->forceFill(['created_at' => $timestamp, 'updated_at' => $timestamp])->saveQuietly();
         $request->days()->create(['day_date' => $date, 'day_name' => 'Lunes', 'hours' => 2.5]);
 
         return $request->fresh();
@@ -102,21 +104,21 @@ class ReportsAndExpirationTest extends TestCase
         }
     }
 
-    public function test_report_filters_overtime_dates_and_includes_every_status(): void
+    public function test_report_filters_creation_dates_and_includes_every_status(): void
     {
         $approved = $this->request();
         $approved->days()->create(['day_date' => '2030-01-08', 'hours' => 3]);
         foreach (['pending_area_manager', 'pending_hr_manager', 'pending_plant_manager', 'rejected'] as $status) {
             $this->request($status);
         }
-        $this->request(date: '2030-01-14');
+        $this->request(date: '2030-01-14', createdAt: '2030-01-14');
         $daily = new ApprovedOvertimeReport(['period' => 'day', 'date' => '2030-01-07']);
-        $this->assertCount(5, $daily->query()->get());
+        $this->assertCount(6, $daily->query()->get());
         $this->assertCount(5, $daily->query()->get()->pluck('request.status')->unique());
         $weekly = new ApprovedOvertimeReport(['period' => 'week', 'year' => 2030, 'week' => 2]);
         $this->assertCount(6, $weekly->query()->get());
         $range = new ApprovedOvertimeReport(['period' => 'range', 'from' => '2030-01-08', 'to' => '2030-01-14']);
-        $this->assertCount(2, $range->query()->get());
+        $this->assertCount(1, $range->query()->get());
         Livewire::actingAs($this->user('hr_manager', ['area_id' => Area::firstOrCreate(['name' => 'Recursos Humanos'])->id]), 'web')->test(ApprovedOvertime::class)
             ->set('year', '2030')->set('week', '2')
             ->assertViewHas('hours', 15.5)->assertViewHas('requestCount', 5);
@@ -261,7 +263,8 @@ class ReportsAndExpirationTest extends TestCase
             $sheet = $book->getActiveSheet();
             $this->assertSame(6, $sheet->getHighestDataRow());
             $this->assertSame('Estado', $sheet->getCell('N1')->getValue());
-            $this->assertSame(array_values(Request::STATUS_LABELS), array_column($sheet->rangeToArray('N2:N6'), 0));
+            $expectedStatuses = $requests->map(fn (Request $req) => $req->fresh()->status_label)->all();
+            $this->assertSame($expectedStatuses, array_column($sheet->rangeToArray('N2:N6'), 0));
             $this->assertSame('R', $sheet->getHighestDataColumn());
             $this->assertSame([[
                 'Solicitud', 'Tipo', 'Nómina', 'Empleado', 'Área de la solicitud', 'Grupo / Línea',

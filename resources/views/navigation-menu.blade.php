@@ -20,8 +20,12 @@
                         </x-nav-link>
                     @endcan
 
-                    <x-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.*')">
+                    <x-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.index') || request()->routeIs('requests.show') || request()->routeIs('requests.edit')">
                         {{ __('Mis solicitudes') }}
+                    </x-nav-link>
+
+                    <x-nav-link href="{{ route('requests.search') }}" :active="request()->routeIs('requests.search*')">
+                        {{ __('Consultar solicitudes') }}
                     </x-nav-link>
 
                     @if (auth()->user()->canApprove())
@@ -202,8 +206,12 @@
                 </x-responsive-nav-link>
             @endcan
 
-            <x-responsive-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.*')">
+            <x-responsive-nav-link href="{{ route('requests.index') }}" :active="request()->routeIs('requests.index') || request()->routeIs('requests.show') || request()->routeIs('requests.edit')">
                 {{ __('Mis solicitudes') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link href="{{ route('requests.search') }}" :active="request()->routeIs('requests.search*')">
+                {{ __('Consultar solicitudes') }}
             </x-responsive-nav-link>
 
             @if (auth()->user()->canApprove())

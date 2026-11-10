@@ -29,13 +29,15 @@ class ApprovedOvertimeReport
     public function query(): Builder
     {
         [$from, $to] = $this->dates();
+        $start = CarbonImmutable::parse($from)->startOfDay();
+        $end = CarbonImmutable::parse($to)->endOfDay();
 
         return RequestDay::query()
-            ->with(['employee.area', 'request.employee.area', 'request.area', 'request.authorizations.user'])
+            ->with(['employee.area', 'request.employee.area', 'request.area', 'request.assignedAreaManager', 'request.authorizations.user'])
             ->whereHas('request', fn ($query) => $query
+                ->where('created_at', '>=', $start)
+                ->where('created_at', '<=', $end)
                 ->when($this->filters['area_id'] ?? null, fn ($query, $area) => $query->where('area_id', $area)))
-            ->where('day_date', '>=', $from)
-            ->where('day_date', '<', CarbonImmutable::parse($to)->addDay()->toDateString())
             ->when($this->filters['employee_number'] ?? null, fn ($query, $number) => $query
                 ->where(function ($query) use ($number) {
                     $query->whereHas('employee', fn ($query) => $query->where('employee_number', $number))

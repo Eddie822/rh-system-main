@@ -1,7 +1,7 @@
 <div class="space-y-6 text-gray-900 dark:text-gray-200">
     <div>
         <h1 class="text-2xl font-semibold dark:text-zinc-600">Reportes</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-800">Todas las solicitudes por fecha de horas extra, incluidas pendientes y rechazadas. Los resultados se actualizan al cambiar filtros.</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-800">Todas las solicitudes por semana o fecha de creación de la solicitud, incluidas pendientes y rechazadas. Los resultados se actualizan al cambiar filtros.</p>
     </div>
     <div class="p-5 space-y-4 bg-white rounded-lg shadow dark:bg-gray-200">
         @if ($filterErrors)
@@ -23,16 +23,16 @@
                 </div>
             @elseif ($period === 'week')
                 <div>
-                    <x-label for="year" value="Año ISO" />
+                    <x-label for="year" value="Año ISO" class="dark:text-zinc-600" />
                     <x-input id="year" type="number" min="2000" max="2100" wire:model.live.debounce.400ms="year" class="w-full mt-1" />
                 </div>
                 <div>
-                    <x-label for="week" value="Semana ISO (lunes a domingo)" />
+                    <x-label for="week" value="Semana ISO (lunes a domingo)" class="dark:text-zinc-600" />
                     <x-input id="week" type="number" min="1" max="53" wire:model.live.debounce.400ms="week" class="w-full mt-1" />
                 </div>
             @elseif ($period === 'range')
                 <div>
-                    <x-label for="from" value="Desde" />
+                    <x-label for="from" value="Desde" class="dark:text-zinc-600" />
                     <x-input id="from" type="date" wire:model.live="from" class="w-full mt-1" />
                 </div>
                 <div>
@@ -41,7 +41,7 @@
                 </div>
             @endif
             <div>
-                <x-label for="area_id" value="Área de la solicitud" />
+                <x-label for="area_id" value="Área de la solicitud" class="dark:text-zinc-600" />
                 <select id="area_id" wire:model.live="area_id" class="w-full mt-1 border-gray-300 rounded-md dark:bg-gray-900">
                     <option value="">Todas las áreas</option>
                     @foreach ($areas as $area)

@@ -100,21 +100,21 @@
                         @case('pending_area_manager')
                             <span
                                 class="px-3 py-1 text-sm font-semibold text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-200">
-                                Pendiente Gerente de Área
+                                Pendiente Gerente de Área{{ $request->managerSuffixForRole('area_manager') }}
                             </span>
                         @break
 
                         @case('pending_hr_manager')
                             <span
                                 class="px-3 py-1 text-sm font-semibold text-purple-800 bg-purple-100 rounded-full dark:bg-purple-900 dark:text-purple-200">
-                                Pendiente RH
+                                Pendiente RH{{ $request->managerSuffixForRole('hr_manager') }}
                             </span>
                         @break
 
                         @case('pending_plant_manager')
                             <span
                                 class="px-3 py-1 text-sm font-semibold text-orange-800 bg-orange-100 rounded-full dark:bg-orange-900 dark:text-orange-200">
-                                Pendiente Gerente de Planta
+                                Pendiente Gerente de Planta{{ $request->managerSuffixForRole('plant_manager') }}
                             </span>
                         @break
 
@@ -256,19 +256,19 @@
                     <p class="text-sm text-gray-500">
                         @switch($authorization->authorization_role)
                             @case('area_manager')
-                                Gerente de Área
+                                Gerente de Área ({{ $authorization->user->full_name }})
                             @break
 
                             @case('hr_manager')
-                                Gerente de RH
+                                Gerente de RH ({{ $authorization->user->full_name }})
                             @break
 
                             @case('plant_manager')
-                                Gerente de Planta
+                                Gerente de Planta ({{ $authorization->user->full_name }})
                             @break
 
                             @default
-                                {{ $authorization->authorization_role }}
+                                {{ $authorization->authorization_role }} ({{ $authorization->user->full_name }})
                         @endswitch
                     </p>
 
@@ -323,7 +323,7 @@
                 @if ($areaApprover) · Nómina {{ $areaApprover->employee_number }} @endif
             </p>
             @if (! in_array($request->status, ['approved', 'rejected'], true))
-                <p class="mt-2 text-sm">Faltan: {{ collect($missingApprovals)->map(fn ($role) => ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role])->join(', ') }}. Las autorizaciones pueden registrarse en cualquier orden.</p>
+                <p class="mt-2 text-sm">Faltan: {{ collect($missingApprovals)->map(fn ($role) => $request->roleLabelWithManager($role, ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role]))->join(', ') }}. Las autorizaciones pueden registrarse en cualquier orden.</p>
             @endif
         </section>
 
@@ -335,7 +335,7 @@
                     Acciones
                 </h2>
 
-                <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Tu decisión registrará: {{ collect($myApprovalRoles)->map(fn ($role) => ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role])->join(' y ') }}.</p>
+                <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Tu decisión registrará: {{ collect($myApprovalRoles)->map(fn ($role) => $request->roleLabelWithManager($role, ['area_manager' => 'Gerente de área', 'hr_manager' => 'RH', 'plant_manager' => 'Gerente de planta'][$role]))->join(' y ') }}.</p>
                 <div class="flex flex-col gap-3 sm:flex-row">
 
                     <button wire:click="approve" wire:loading.attr="disabled"

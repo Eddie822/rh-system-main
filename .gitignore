@@ -19,6 +19,8 @@
 /public/hot
 /public/storage
 /storage/*.key
+/docker/certs/*.key
+/docker/certs/*.crt
 /storage/pail
 /vendor
 _ide_helper.php
